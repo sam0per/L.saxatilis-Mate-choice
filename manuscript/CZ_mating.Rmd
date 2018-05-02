@@ -1,5 +1,5 @@
 ---
-title: "Mating models for the four contact zones"
+title: "Mating model for the four contact zones"
 author: "Samuel Perini"
 output: pdf_document
 csl: journal-of-evolutionary-biology.csl
@@ -18,7 +18,6 @@ This report includes two logistic regression models that aim to describe the mou
 $\vspace{0.5cm}$
 
 ```{r fig1, fig.height=4, fig.width=6, fig.align='center', echo=FALSE}
-#rm(list = ls())
 CZ_glm = read.csv("../CZ_ABCD/final_data/CZABCD_clean.csv",sep = ";")
 breaks <- c(-2,seq(-1.5,1.3,0.15),2)
 bin <- cut(CZ_glm$size_ratio,breaks)

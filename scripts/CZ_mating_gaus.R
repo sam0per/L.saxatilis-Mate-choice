@@ -1,15 +1,43 @@
 rm(list = ls())
 
+#############################
+# Install required packages #
+#############################
+sessionInfo()
+if (!require("rstan")) install.packages("rstan")
+(.packages())
+# List of packages for session
+.packages = c("ggplot2", "plyr", "rms")
+
+# Install CRAN packages (if not already installed)
+.inst <- .packages %in% installed.packages()
+if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
+
+# Load packages into session 
+lapply(.packages, require, character.only=TRUE)
+
+load("Rpackages")
+for (p in setdiff(packages, installed.packages()[,"Package"])){
+  install.packages(p)
+}
+#############################
+### read and adjust data ###
+#############################
+
 CZ_data = read.csv("data/CZ_mating_clean.csv",sep = ";")
 CZ_data$ref_ecotype=as.integer(CZ_data$ref_ecotype) # 1 for crab and 2 for wave
 CZ_data$shore=as.integer(CZ_data$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
 head(CZ_data)
 summary(CZ_data)
+
 library(rstan)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 y = CZ_data$mountYN
 
+#############################
+# stan model with only size #
+#############################
 CZ_mat_stan_size = stan(file = "scripts/CZ_mating_gaus_size.stan", data = list(N = nrow(CZ_data),
                                                                                y = CZ_data$mountYN,
                                                                                ratio = CZ_data$size_ratio))
@@ -17,7 +45,13 @@ CZ_mat_stan_size = stan(file = "scripts/CZ_mating_gaus_size.stan", data = list(N
 stan_dens(CZ_mat_stan_size, pars = c("level","aver","stan_dev","gamma_ta"))
 CZ_size_params = round(summary(CZ_mat_stan_size, pars = c("level","aver","stan_dev","gamma_ta"),
                                probs=c(0.25, 0.975))$summary,2)
+write.table(CZ_size_params, "tables/CZ_size_params.csv", row.names = TRUE, col.names = TRUE,sep = ";")
+
+y_rep = data.frame(y_rep=summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'mean'])
+write.table(y_rep, "tables/CZ_size_mount_rep.csv", row.names = TRUE, col.names = TRUE,sep = ";")
 CZ_data$y_rep = summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'mean']
+CZ_data$y_rep_se = summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'se_mean']
+CZ_data$y_preds = rbinom(n = nrow(CZ_data),size = 1,prob = CZ_data$y_rep)
 
 library(boot)
 CZ_logit = CZ_size_params['level','mean'] + (1 / sqrt(2 * pi * CZ_size_params['stan_dev','mean']^2)) * 
@@ -25,20 +59,109 @@ CZ_logit = CZ_size_params['level','mean'] + (1 / sqrt(2 * pi * CZ_size_params['s
   CZ_size_params['gamma_ta','mean'] * CZ_data$size_ratio
 CZ_data$preds = inv.logit(CZ_logit)
 
+CZ_lci_logit = CZ_size_params['level','25%'] + (1 / sqrt(2 * pi * CZ_size_params['stan_dev','25%']^2)) * 
+  exp(-0.5*((CZ_data$size_ratio-CZ_size_params['aver','25%'])/CZ_size_params['stan_dev','25%'])^2) + 
+  CZ_size_params['gamma_ta','25%'] * CZ_data$size_ratio
+CZ_data$uci_preds = inv.logit(CZ_lci_logit)
+CZ_data$uci_preds = NULL
+CZ_data$uci_preds = CZ_data$preds + CZ_data$y_rep_se
+CZ_data$uci_preds = exp(CZ_logit+1.96*CZ_data$y_rep_se)/(1+exp(CZ_logit+1.96*CZ_data$y_rep_se))
+CZ_data$uci_preds = CZ_data$preds+1.96*CZ_data$y_rep_se
+
+
+CZ_uci_logit = CZ_size_params['level','97.5%'] + (1 / sqrt(2 * pi * CZ_size_params['stan_dev','97.5%']^2)) * 
+  exp(-0.5*((CZ_data$size_ratio-CZ_size_params['aver','97.5%'])/CZ_size_params['stan_dev','97.5%'])^2) + 
+  CZ_size_params['gamma_ta','97.5%'] * CZ_data$size_ratio
+CZ_data$lci_preds = inv.logit(CZ_uci_logit)
+CZ_data$lci_preds = NULL
+CZ_data$lci_preds = CZ_data$preds - CZ_data$y_rep_se
+CZ_data$lci_preds = exp(CZ_logit-1.96*CZ_data$y_rep_se)/(1+exp(CZ_logit-1.96*CZ_data$y_rep_se))
+CZ_data$lci_preds = CZ_data$preds-1.96*CZ_data$y_rep_se
+
 library(rstanarm)
 launch_shinystan(CZ_mat_stan_size)
-                                                       
+
+###################################
+# plot observs and preds for size #
+###################################                                                    
 library(bayesplot)
 library(ggplot2)
 range(CZ_data$size_ratio)
 breaks = c(-2,seq(-1.5,1.5,0.1),2)
 bin = cut(CZ_data$size_ratio,breaks)
 p_m_obs = aggregate(CZ_data$mountYN,by=list(bin),FUN=mean)[,2]
+p_m_preds = aggregate(CZ_data$y_preds,by=list(bin),FUN=mean)[,2]
 bin_mean = aggregate(CZ_data$size_ratio,by=list(bin),FUN=mean)[,2]
 CZ_data$count = 1
 bin_sum = aggregate(CZ_data$count,by=list(bin),FUN=sum)[,2]
-CZ_data_bin = data.frame(cbind(mount=p_m_obs,size_ratio=bin_mean,count=bin_sum))
+CZ_data_bin = data.frame(cbind(mount=p_m_obs,mount_rep=p_m_preds,size_ratio=bin_mean,
+                               count=bin_sum))
+summary(CZ_data_bin)
 
+library(dplyr)
+library(Rmisc)
+range(CZ_data$size_ratio)
+breaks = c(-2,seq(-1.5,1.5,0.1),2)
+bin = cut(CZ_data$size_ratio,breaks)
+CZ_data$bin = cut(CZ_data$size_ratio,breaks)
+CZ_data_bin <- 
+  CZ_data %>%
+  group_by(bin) %>%
+  dplyr::summarise(mount = mean(mountYN), 
+                   uci_mount = CI(mountYN)['upper'], 
+                   lci_mount = CI(mountYN)['lower'],
+                   mean_ratio = mean(size_ratio)) %>% 
+  mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
+
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0) +
+  geom_ribbon(aes(x = size_ratio,ymin = lci_preds, ymax = uci_preds), fill = "orange", alpha=0.3) +
+  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
+  geom_errorbar(data = CZ_data_bin, aes(x = mean_ratio, ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
+  scale_colour_manual(values=c("blue","orange2")) +
+  geom_line(aes(size_ratio,preds,col="predictions")) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(legend.title = element_text(size = 11,face = "bold"),
+        axis.title = element_text(face = "bold"))
+
+#######################
+#######################
+
+CZ_data_bin %>%
+  ggplot(aes(x = mean_ratio, y = mount, col="observations")) +
+  geom_point() +
+  geom_errorbar(aes(ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
+  geom_vline(xintercept = 0) +
+  scale_colour_manual(values=c("blue","orange")) +
+  geom_line(data = CZ_data, aes(size_ratio,preds,col="predictions")) +
+  geom_line(data = CZ_data, aes(size_ratio,lci_preds,col="predictions"),linetype='dashed',alpha=0.5) +
+  geom_line(data = CZ_data, aes(size_ratio,uci_preds,col="predictions"),linetype='dashed',alpha=0.5) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(legend.title = element_text(size = 11,face = "bold"),
+        axis.title = element_text(face = "bold"))
+
+
+CZ_data_bin %>%
+  ggplot(aes(x = mean_ratio, y = mount)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin = lci_mount, ymax = uci_mount), position = "dodge")
+
+ggplot(CZ_data_bin,aes(mount,mount_rep)) +
+  geom_abline(slope = 1) +
+  geom_point()
+
+ggplot(data = CZ_data_bin,aes(size_ratio,mount,col="observations")) +
+  geom_point(aes(size=CZ_data_bin$count)) +
+  geom_vline(xintercept = 0) +
+  scale_colour_manual(values=c("blue","orange")) +
+  geom_point(aes(size_ratio,mount_rep,col="predictions",size=CZ_data_bin$count)) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(legend.title = element_text(size = 11,face = "bold"),
+        axis.title = element_text(face = "bold"))
+  
 ggplot(data = CZ_data_bin,aes(size_ratio,mount,col="observations")) +
   geom_point(aes(size=CZ_data_bin$count)) +
   geom_vline(xintercept = 0) +
@@ -60,7 +183,18 @@ ggplot(data = CZ_data_bin,aes(size_ratio,mount,col="observations")) +
         axis.title = element_text(face = "bold"))
 
 
+###################################
+# apply size model to field distr #
+###################################
+devtools::install_github("rmcelreath/rethinking",force = TRUE)
+library(rethinking)
 
+
+
+
+############################################
+# stan model with shore, ecotype and shape #
+############################################
 stan_run_mat2 = stan(file = "stan/mat_gau2.stan",data = list(N = nrow(CZ_data),
                                                              y = CZ_data$mountYN,
                                                              ratio = CZ_data$size_ratio,
