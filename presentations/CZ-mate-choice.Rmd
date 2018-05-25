@@ -1,0 +1,235 @@
+---
+title: "Mate choice across four contact zones and two ecotypes"
+subtitle: "Littorina meeting, Tjärnö"
+author:
+- Samuel Perini
+date: "14/05/2018"
+output:
+  beamer_presentation:
+    incremental: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Aim
+
+The impact of the mating patterns on the evolution of reproductive barriers between the two ecotypes of _Littorina saxatilis_
+
+1.  The relationship between the probability of mounting and the sizes of the mating pairs
+$\vspace{0.2cm}$
+1.  Changes in the relationship across shores and between ecotypes
+
+
+## Mating experiment - Data
+
+### 1.  The relationship between the probability of mounting and the sizes of the mating pairs
+
+> - Binary response variable:  mount YES or NO
+$\vspace{1cm}$
+> - Explanatory variable:  shell size
+
+
+## Mating experiment - Data
+
+```{r fig1, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(Rmisc)
+CZ_data = read.csv("../data/CZ_mating_clean.csv",sep = ";")
+breaks = c(-2,seq(-1.5,1.5,0.1),2)
+CZ_data$bin = cut(CZ_data$size_ratio,breaks)
+CZ_data_bin <- 
+  CZ_data %>%
+  group_by(bin) %>%
+  dplyr::summarise(mount = mean(mountYN), 
+                   uci_mount = CI(mountYN)['upper'], 
+                   lci_mount = CI(mountYN)['lower'],
+                   mean_ratio = mean(size_ratio)) %>%
+  mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
+ggplot(data = CZ_data_bin) +
+  geom_vline(xintercept = 0) +
+  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="mean size ratio")) +
+  geom_errorbar(data = CZ_data_bin, aes(x = mean_ratio, ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
+  scale_colour_manual(values=c("blue","orange2")) +
+  labs(x="female - male size (log)",
+       y="proportion of mounting",col="") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+
+
+## Mating experiment - Model
+
+```{r fig2, message=FALSE}
+library(boot)
+CZ_logit = read.csv("../tables/CZ_size_mount_hat.csv", sep = ";")
+CZ_data$preds = inv.logit(CZ_logit$mean)
+CZ_data$y_preds = rbinom(n = nrow(CZ_data),size = 1,prob = CZ_data$preds)
+CZ_data$uci_preds = exp(CZ_logit$mean+1.96*CZ_logit$se_mean)/(1+exp(CZ_logit$mean+1.96*CZ_logit$se_mean))
+CZ_data$lci_preds = exp(CZ_logit$mean-1.96*CZ_logit$se_mean)/(1+exp(CZ_logit$mean-1.96*CZ_logit$se_mean))
+
+CZ_data_bin <- 
+  CZ_data %>%
+  group_by(bin) %>%
+  dplyr::summarise(mount = mean(mountYN), 
+                   uci_mount = CI(mountYN)['upper'], 
+                   lci_mount = CI(mountYN)['lower'],
+                   mean_ratio = mean(size_ratio),
+                   preds_mount = mean(y_preds)) %>% 
+  mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
+
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0) +
+  geom_ribbon(aes(x = size_ratio,ymin = lci_preds, ymax = uci_preds), fill = "orange", alpha=0.3) +
+  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
+  geom_errorbar(data = CZ_data_bin, aes(x = mean_ratio, ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
+  scale_colour_manual(values=c("blue","orange2")) +
+  geom_line(aes(size_ratio,preds,col="predictions")) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+## Mating experiment - Parameters
+
+> - _level_ = intercept
+
+> - $\mu$ = preference
+
+> - $\sigma$ = choosiness
+
+> - $\gamma$ = slope
+
+## Mating experiment - Parameters
+
+- _level_ = intercept or snail activity
+```{r fig3, message=FALSE}
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0) +
+  scale_colour_manual(values="orange2") +
+  geom_line(aes(size_ratio,preds,col="predictions"), linetype='dashed') +
+  geom_line(aes(size_ratio,preds+0.3,col="predictions")) +
+  geom_line(aes(size_ratio,preds-0.3,col="predictions")) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+
+## Mating experiment - Parameters
+
+- $\mu$ = preference or preferred trait value
+
+```{r fig4, message=FALSE}
+CZ_logit_mu = -1.23 + (1 / sqrt(2 * pi * 0.3^2)) * 
+  exp(-0.5*((CZ_data$size_ratio-0.6)/0.3)^2) + 
+  0.6 * CZ_data$size_ratio
+CZ_data$preds_mu = inv.logit(CZ_logit_mu)
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0) +
+  scale_colour_manual(values="orange2") +
+  geom_line(aes(size_ratio,preds,col="predictions"), linetype='dashed') +
+  geom_line(aes(size_ratio,preds_mu,col="predictions")) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+
+## Mating experiment - Parameters
+
+- $\sigma$ = choosiness or strength of preference
+
+```{r fig5, message=FALSE}
+CZ_logit_sd = -1.23 + (1 / sqrt(2 * pi * 0.6^2)) * 
+  exp(-0.5*((CZ_data$size_ratio-0.2)/0.6)^2) + 
+  0.6 * CZ_data$size_ratio
+CZ_data$preds_sd = inv.logit(CZ_logit_sd)
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0) +
+  scale_colour_manual(values="orange2") +
+  geom_line(aes(size_ratio,preds,col="predictions"), linetype='dashed') +
+  geom_line(aes(size_ratio,preds_sd,col="predictions")) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+## Mating experiment - Parameters
+
+- $\gamma$ = slope or tail asymmetry
+
+```{r fig6, message=FALSE}
+CZ_logit_ta = -1.23 + (1 / sqrt(2 * pi * 0.3^2)) * 
+  exp(-0.5*((CZ_data$size_ratio-0.2)/0.3)^2) + 
+  0.2 * CZ_data$size_ratio
+CZ_data$preds_ta = inv.logit(CZ_logit_ta)
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0) +
+  scale_colour_manual(values="orange2") +
+  geom_line(aes(size_ratio,preds,col="predictions"), linetype='dashed') +
+  geom_line(aes(size_ratio,preds_ta,col="predictions")) +
+  labs(size="bin size",x="female - male size (log)",
+       y="probability of mounting",col="") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+
+## Mating experiment - Parameters
+
+\includegraphics[width=250pt]{../figures/gaus_size_pars_dens.pdf}
+
+
+## Field simulations - Data
+
+> - male and female sizes are sampled from a normal distribution with $\mu$ and $\sigma$ of the test snails (phenotypic clines)
+$\vspace{0.2cm}$
+> - mating pairs are formed assuming that every female has at least one successful mating (sexual selection on males)
+
+
+## Field simulations - Sexual selection
+
+correlation between male trait value (size) and mounting success
+
+\includegraphics[width=200pt]{../figures/gaus_size_corr_sex_sel.pdf}
+
+## Field simulations - Assortative mating
+
+correlation of trait values (size) in mating individuals
+
+\includegraphics[width=200pt]{../figures/gaus_size_corr_assort.pdf}
+
+## Posterior predictive checks
+
+```{r fig10, message=FALSE}
+y_rep = read.csv("../tables/CZ_size_mount_rep.csv", sep = ";")
+CZ_data$y_rep = y_rep$y_rep
+CZ_ppc_bin <- 
+  CZ_data %>%
+  group_by(bin) %>%
+  dplyr::summarise(mount = mean(mountYN), 
+                   mean_ratio = mean(size_ratio),
+                   y_rep = mean(y_rep))
+
+ggplot(CZ_ppc_bin,aes(mount,y_rep)) +
+  geom_abline(slope = 1) +
+  geom_point() +
+  labs(x="observed mount proportions", y="predicted probability") +
+  theme(axis.title = element_text(face = "bold",size = 13))
+```
+
+
+## Posterior predictive checks
+
+\includegraphics[width=250pt]{../figures/gaus_size_ppc_bars_grouped.pdf}
+
+
+## Next
+
+> - Changes in the relationship across shores and between ecotypes
+
+> - Compare the models
+
+> - Influence of mating pattern on phenotypic clines and barrier to gene flow (Marina R)
