@@ -3,11 +3,11 @@ rm(list = ls())
 #############################
 # Install required packages #
 #############################
-sessionInfo()
-if (!require("rstan")) install.packages("rstan")
-(.packages())
+#if (!require("rstan")) install.packages("rstan")
+#(.packages())
+
 # List of packages for session
-.packages = c("ggplot2", "plyr", "rms")
+.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -16,10 +16,11 @@ if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
 # Load packages into session 
 lapply(.packages, require, character.only=TRUE)
 
-load("Rpackages")
-for (p in setdiff(packages, installed.packages()[,"Package"])){
-  install.packages(p)
-}
+#load("Rpackages")
+#for (p in setdiff(packages, installed.packages()[,"Package"])){
+#  install.packages(p)
+#}
+
 #############################
 ### read and adjust data ###
 #############################
@@ -30,40 +31,50 @@ CZ_data$shore=as.integer(CZ_data$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for
 head(CZ_data)
 summary(CZ_data)
 
-library(rstan)
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores())
 
 #############################
 # stan model with only size #
 #############################
-rm(CZ_mat_stan_size)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+
 CZ_mat_stan_size = stan(file = "scripts/CZ_mating_gaus_size.stan", data = list(N = nrow(CZ_data),
                                                                                y = CZ_data$mountYN,
                                                                                ratio = CZ_data$size_ratio))
-
+pdf("figures/gaus_size_pars_dens.pdf")
 stan_dens(CZ_mat_stan_size, pars = c("level","lambda","aver","stan_dev","gamma_ta"))
+dev.off()
 CZ_size_params = round(summary(CZ_mat_stan_size, pars = c("level","lambda","aver","stan_dev","gamma_ta"),
                                probs=c(0.25, 0.975))$summary,2)
-write.table(CZ_size_params, "tables/CZ_size_params.csv", row.names = TRUE, col.names = TRUE,sep = ";")
+CZ_size_params = rownames_to_column(as.data.frame(CZ_size_params), var="params")
+write.table(CZ_size_params, "tables/CZ_size_params.csv", row.names = FALSE, col.names = TRUE,sep = ";")
 
 y_rep = data.frame(y_rep=summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'mean'])
-write.table(y_rep, "tables/CZ_size_mount_rep.csv", row.names = TRUE, col.names = TRUE,sep = ";")
+y_rep = rownames_to_column(y_rep, var="rep")
+write.table(y_rep, "tables/CZ_size_mount_rep.csv", row.names = FALSE, col.names = TRUE,sep = ";")
 
 CZ_data$y_rep = summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'mean']
 CZ_data$y_rep_se = summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'se_mean']
 
 
-library(boot)
 y_hat = round(summary(CZ_mat_stan_size, pars = c("y_hat"))$summary, 2)
-write.table(y_hat, "tables/CZ_size_mount_hat.csv", row.names = TRUE, col.names = TRUE,sep = ";")
+y_hat = rownames_to_column(as.data.frame(y_hat), var="hat")
+write.table(y_hat, "tables/CZ_size_mount_hat.csv", row.names = FALSE, col.names = TRUE,sep = ";")
 
 CZ_logit = summary(CZ_mat_stan_size, pars = c("y_hat"))$summary[,'mean']
-CZ_logit_se = summary(CZ_mat_stan_size, pars = c("y_hat"))$summary[,'se_mean']
-CZ_data$preds = inv.logit(CZ_logit)
+CZ_uci = summary(CZ_mat_stan_size, pars = c("y_hat"))$summary[,'97.5%']
+CZ_lci = summary(CZ_mat_stan_size, pars = c("y_hat"))$summary[,'2.5%']
+CZ_data$preds = inv.logit(CZ_logit) %>% round(3)
+CZ_data$uci_preds = inv.logit(CZ_uci) %>% round(3)
+CZ_data$lci_preds = inv.logit(CZ_lci) %>% round(3)
 CZ_data$y_preds = rbinom(n = nrow(CZ_data),size = 1,prob = CZ_data$preds)
-CZ_data$uci_preds = exp(CZ_logit+1.96*CZ_logit_se)/(1+exp(CZ_logit+1.96*CZ_logit_se))
-CZ_data$lci_preds = exp(CZ_logit-1.96*CZ_logit_se)/(1+exp(CZ_logit-1.96*CZ_logit_se))
+
+#CZ_logit_se = summary(CZ_mat_stan_size, pars = c("y_hat"))$summary[,'se_mean']
+#CZ_data$preds = inv.logit(CZ_logit)
+#CZ_data$y_preds = rbinom(n = nrow(CZ_data),size = 1,prob = CZ_data$preds)
+#CZ_data$uci_preds = exp(CZ_logit+1.96*CZ_logit_se)/(1+exp(CZ_logit+1.96*CZ_logit_se))
+#CZ_data$lci_preds = exp(CZ_logit-1.96*CZ_logit_se)/(1+exp(CZ_logit-1.96*CZ_logit_se))
 
 ################################
 ################################
@@ -90,27 +101,24 @@ CZ_data$lci_preds = CZ_data$preds - CZ_data$y_rep_se
 CZ_data$lci_preds = exp(CZ_logit-1.96*CZ_data$y_rep_se)/(1+exp(CZ_logit-1.96*CZ_data$y_rep_se))
 CZ_data$lci_preds = CZ_data$preds-1.96*CZ_logit_se
 
-library(rstanarm)
-launch_shinystan(CZ_mat_stan_size)
+#library(rstanarm)
+#launch_shinystan(CZ_mat_stan_size)
+
 
 ###################################
 # plot observs and preds for size #
 ###################################                                                    
-#install.packages("bayesplot")
-library(bayesplot)
-library(ggplot2)
-
 y = CZ_data$mountYN
 y_rep = extract(CZ_mat_stan_size, pars = 'y_rep', permuted = TRUE)$y_rep
 dim(y_rep)
 ppc_bars(y,y_rep)
 breaks = c(-2,seq(-1.5,1.5,0.1),2)
 bin = cut(CZ_data$size_ratio,breaks)
+pdf("figures/gaus_size_ppc_bars_grouped.pdf")
 ppc_bars_grouped(y, y_rep, bin, prob = 0, freq = FALSE)
+dev.off()
 
-library(dplyr)
-#install.packages("Rmisc")
-library(Rmisc)
+
 range(CZ_data$size_ratio)
 breaks = c(-2,seq(-1.5,1.5,0.1),2)
 CZ_data$bin = cut(CZ_data$size_ratio,breaks)
@@ -126,22 +134,27 @@ CZ_data_bin <-
   mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
 summary(CZ_data_bin)
 
+pdf("figures/gaus_size_preds.pdf", width=8, height=7)
 ggplot(data = CZ_data) +
   geom_vline(xintercept = 0) +
   geom_ribbon(aes(x = size_ratio,ymin = lci_preds, ymax = uci_preds), fill = "orange", alpha=0.3) +
-  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
   geom_errorbar(data = CZ_data_bin, aes(x = mean_ratio, ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
   scale_colour_manual(values=c("blue","orange2")) +
   geom_line(aes(size_ratio,preds,col="predictions")) +
-  labs(size="bin size",x="female - male size (log)",
+  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
+  labs(size="bin size",x="female - male size (ln)",
        y="probability of mounting",col="") +
   theme(legend.title = element_text(size = 11,face = "bold"),
-        axis.title = element_text(face = "bold"))
+        axis.title = element_text(face = "bold", size = 13))
+dev.off()
 
+pdf("figures/gaus_size_ppc.pdf")
 ggplot(CZ_data_bin,aes(mount,y_rep)) +
-  geom_abline(slope = 1) +
+  geom_abline(slope = 1, alpha=0.5) +
   geom_point() +
-  labs(x='observed mount proportion', y='predicted probability')
+  labs(x='observed mount proportion', y='predicted probability') +
+  theme(axis.title = element_text(face = "bold", size = 13))
+dev.off()
 
 #######################
 #######################
@@ -230,13 +243,9 @@ ggplot(data = CZ_data_bin,aes(size_ratio,mount,col="observations")) +
 ###################################
 # apply size model to field distr #
 ###################################
-devtools::install_github("rmcelreath/rethinking",force = TRUE)
-library(rethinking)
+#devtools::install_github("rmcelreath/rethinking",force = TRUE)
+#library(rethinking)
 
-CZA_data = read.csv("../2.mating/CZA/final_data/CZA_use_cleanup.csv", sep = ";")
-with(CZA_data, plot(DistAlongPath, length_mm))
-
-CZB_data = read.csv("../2.mating/CZB/final_data/CZA_use_cleanup.csv", sep = ";")
 
 cline_2c3s <- function(phen,position,cl,cr,wl,wr,wave,crab,sc,sw,sh){
   # left cline
@@ -279,14 +288,32 @@ hyb <- data.frame(log_male=rnorm(10000,mean = (2.4 + 1.5)/2,
 # build the new dataframe from the wave and crab clines
 CZ_cline <- merge(crab,wave,all=TRUE)
 CZ_cline <- merge(CZ_cline,hyb,all=TRUE)
-CZ_cline$newmale=NULL
 
-crab$newmale=NULL
+eco_list = list(wave=head(wave),hyb=head(hyb),crab=head(crab))
+library(boot)
+test_fun = function(eco_data, female, male, i) {
+  list_eco = lapply(eco_data[, female], function(x) {
+    eco_data[, male][which(rbinom(n = nrow(eco_data),size = 1,
+                                  prob = inv.logit(-1.23 + (1 / sqrt(2 * pi * 0.27^2)) *
+                                                     exp(-0.5*(((x-eco_data[, male])-0.2)/0.27)^2) +
+                                                     0.58 * (x-eco_data[, male])))==1)]
+  })
+}
+win=lapply(names(eco_list), function(x) test_fun(eco_list[[x]], "log_female", "log_male", x))
+lapply(unlist(win, recursive = FALSE), '[', 1)
+
+
 crab$size_ratio <- crab$log_female-crab$log_male
 crab$logit = -1.23 + (1 / sqrt(2 * pi * 0.27^2)) * exp(-0.5*((crab$size_ratio-0.2)/0.27)^2) + 
   0.58 * crab$size_ratio
 crab$preds = inv.logit(crab$logit)
 crab$mount = rbinom(n = nrow(crab),size = 1,prob = crab$preds)
+
+library(tidyverse)
+CZ_cline %>% 
+  nest(-ref_ecotype) %>% 
+ 
+
 
 cztest <- CZ_cline %>% 
   nest(-ref_ecotype) %>%
@@ -319,7 +346,47 @@ CZ_cline_YN[[i]]$`0`[CZ_cline_YN$`0`[, 2] %in% CZ_cline_YN$`1`[, 2], ]
 with(crab, hist(log_female-log_male))
 with(wave, hist(log_female-log_male))
 
-eco_list = list(wave=wave,hyb=hyb,crab=crab)
+eco_list = list(wave=head(wave),hyb=head(hyb),crab=head(crab))
+str(eco_list)
+
+
+test_fun = function(eco_data, female, male, i) {
+  list_eco = lapply(eco_data[, female], function(x) {
+    x - eco_data[, male]
+  })
+}
+
+
+
+f <- function(x, i) {
+  mean(x[i][, 1])
+}
+
+lapply(eco_list, f)
+
+lapply(eco_list$wave$log_female, function(x) x + eco_list$wave$log_male)
+lapply(unlist(win, recursive = FALSE), '[', 1)
+
+lapply(eco_list, function(x) x[[1]] + x[2])
+
+
+lapply(names(eco_list), function(x) mean(eco_list[[x]]))
+
+lapply(eco_list, function(x) lapply(x[2], function(x) x + eco_list[[1]]))
+
+lapply(names(eco_list), function(x) print(eco_list[[x]][2]))
+
+lapply(names(eco_list), function() lapply(eco_list[[x]][2]), function(x) sum(x))
+
+
+
+lapply(names(eco_list), function(y) sapply(1:4, function(x) print(y)))
+lapply(names(eco_list), function(x) lapply(eco_list[[x]][2]), function(x) print(x))
+lapply(names(eco_list), setNames)
+nrow(eco_list)
+
+
+
 #fem_list = list(wave$log_female,hyb$log_female,crab$log_female)
 crabba = crab$log_female
 for (i in nrow(crab)){
@@ -1418,3 +1485,8 @@ write.table(CZ_glm, "CZ_ABCD/results/CZABCD_stan.csv", row.names = FALSE, col.na
 # beta_means = apply(pars,2,'mean')
 
 # beta = apply(extract(stan_run, pars = 'beta')$beta, 2, 'mean')
+
+
+
+
+sessionInfo()

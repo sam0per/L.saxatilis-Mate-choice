@@ -6,10 +6,10 @@ data {
 
 parameters {
   real level;
-  real<lower=0, upper=10> lambda;
+  real<lower=0, upper=20> lambda;
   real aver;
   real gamma_ta;
-  real<lower=0, upper=10> stan_dev;
+  real<lower=0, upper=20> stan_dev;
 }
 
 transformed parameters{
