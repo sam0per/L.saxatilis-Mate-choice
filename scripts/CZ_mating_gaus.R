@@ -7,7 +7,8 @@ rm(list = ls())
 #(.packages())
 
 # List of packages for session
-.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc")
+.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "tidyverse",
+              "bbmle")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -69,6 +70,8 @@ CZ_data$preds = inv.logit(CZ_logit) %>% round(3)
 CZ_data$uci_preds = inv.logit(CZ_uci) %>% round(3)
 CZ_data$lci_preds = inv.logit(CZ_lci) %>% round(3)
 CZ_data$y_preds = rbinom(n = nrow(CZ_data),size = 1,prob = CZ_data$preds)
+
+write.table(CZ_data, "tables/CZ_size_mating.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 
 #CZ_logit_se = summary(CZ_mat_stan_size, pars = c("y_hat"))$summary[,'se_mean']
 #CZ_data$preds = inv.logit(CZ_logit)
@@ -241,21 +244,37 @@ ggplot(data = CZ_data_bin,aes(size_ratio,mount,col="observations")) +
 
 
 ###################################
-# apply size model to field distr #
+##### cline analysis for size #####
 ###################################
-#devtools::install_github("rmcelreath/rethinking",force = TRUE)
-#library(rethinking)
+CZA <- read.csv("../2.mating/CZA/final_data/CZA_use_cleanup.csv",sep = ";")
+CZA$shore <- "CZA"
+CZB <- read.csv("../2.mating/CZB/final_data/CZB_use_cleanup.csv",sep = ";")
+CZB$shore <- "CZB"
+CZC <- read.csv("../2.mating/CZC/final_data/CZC_use_cleanup.csv",sep = ";")
+CZC$shore <- "CZC"
+CZD <- read.csv("../2.mating/CZD/final_data/CZD_use_cleanup.csv",sep = ";")
+CZD$shore <- "CZD"
+CZ <- merge(CZB,CZA,all = TRUE)
+CZ <- merge(CZ,CZC,all = TRUE)
+CZ <- merge(CZ,CZD,all = TRUE)
+CZall = CZ[!is.na(CZ$Shape) & CZ$log_female>0.5,]
+write.table(CZall, "data/CZ_all_mating_clean.csv", row.names = FALSE, col.names = TRUE, sep = ";")
+CZ_all = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+identical(sort(CZ_all$size_ratio), sort(CZ_data$size_ratio))
 
-
-cline_2c3s <- function(phen,position,cl,cr,wl,wr,wave,crab,sc,sw,sh){
+cline_2c3s <- function(phen,position,sex,cl,cr,wl,wr,crab,wave,zs_c,zs_w,sc,sh,sw){
   # left cline
   p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
   s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
+  
   # right cline
   p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
   z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
   s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
+  
   # combined cline
   z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
   s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
@@ -265,7 +284,129 @@ cline_2c3s <- function(phen,position,cl,cr,wl,wr,wave,crab,sc,sw,sh){
   return(minusll)
 }
 
-hist(rnorm(10000,mean = 2.4, sd = sqrt(0.2)))
+cline_2c2s <- function(phen,position,sex,cl,cr,wl,wr,crab,wave,zs_c,zs_w,sc,sw){
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+  s_xl <- sqrt(sc^2 + (p_xl)*(sw^2-sc^2))
+  
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+  s_x <- sqrt(sc^2 + (p_x)*(sw^2-sc^2))
+  
+  # combined cline
+  z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=TRUE))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  return(minusll)
+}
+
+
+rm(theta.init ,mle.cline.2c3s)
+mle.cline.2c3s = list(CZA=NULL, CZB=NULL, CZC=NULL, CZD=NULL)
+
+for (p in levels(CZ_all$shore)) {
+  if (p=='CZA'){
+    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    title(main = p)
+    theta.init = list(cl=170,cr=280,wl=20,wr=10,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    mle.cline.2c3s$CZA = mle2(cline_2c3s, theta.init,
+                              control=list(parscale=abs(unlist(theta.init))),
+                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
+                                        sex=CZ_all$sex[CZ_all$shore==p]))
+  }
+  else if (p=='CZB'){
+    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    title(main = p)
+    theta.init = list(cl=70,cr=125,wl=5,wr=50,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    mle.cline.2c3s$CZB = mle2(cline_2c3s, theta.init,
+                              control=list(parscale=abs(unlist(theta.init))),
+                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
+                                        sex=CZ_all$sex[CZ_all$shore==p]))
+  }
+  else if (p=='CZC'){
+    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    title(main = p)
+    theta.init = list(cl=50,cr=125,wl=10,wr=20,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    mle.cline.2c3s$CZC = mle2(cline_2c3s, theta.init,
+                              control=list(parscale=abs(unlist(theta.init))),
+                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
+                                        sex=CZ_all$sex[CZ_all$shore==p]))
+  }
+  else {
+    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    title(main = p)
+    theta.init = list(cl=80,cr=165,wl=5,wr=10,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    mle.cline.2c3s$CZD = mle2(cline_2c3s, theta.init,
+                              control=list(parscale=abs(unlist(theta.init))),
+                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
+                                        sex=CZ_all$sex[CZ_all$shore==p]))
+  }
+}
+
+
+(CZ_cline_params = sapply(mle.cline.2c3s, function(x) round(coef(x), 2)))
+CZ_cline_params = rownames_to_column(as.data.frame(CZ_cline_params), var="params")
+write.table(CZ_cline_params, "tables/CZ_cline_params.csv", row.names = FALSE, col.names = TRUE, sep = ";")
+
+(CZ_cline_se = sapply(mle.cline.2c3s, function(x) round(sqrt(diag(vcov(x))), 2)))
+write.table(CZ_cline_se, "tables/CZ_cline_se.csv", row.names = FALSE, col.names = TRUE, sep = ";")
+
+sapply(mle.cline.2c3s, function(x) summary(x))
+sapply(mle.cline.2c3s, function(x) AIC(x))
+
+
+CZ_all %>% group_by(shore, sex) %>% dplyr::summarise(mean_size=mean(log(length_mm)))
+colnames(CZ_all)
+CZ_all %>% group_by(shore) %>% dplyr::summarise(min=min(DistAlongPath), max=max(DistAlongPath))
+breaks = c(0,seq(10,300,50),400)
+CZ_all$bin = cut(CZ_all$DistAlongPath,breaks)
+CZ_all_bin = CZ_all %>% group_by(shore, bin, sex) %>%
+  dplyr::summarise(mean_size=mean(log(length_mm)))
+
+CZ_all_bin$diff = c(0,round(diff(CZ_all_bin$mean_size, lag = 1),2))
+
+pdf("figures/test_size_mfdiff_cline.pdf")
+CZ_all_bin %>%
+  dplyr::filter(row_number() %% 2 == 0) %>%
+  ggplot() +
+    geom_point(aes(bin,diff,col=shore)) +
+    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+    labs(x="distance intervals", y="male - female size (ln)") +
+    theme(axis.title = element_text(face = "bold"))
+dev.off()
+
+####################################
+# simulate wild size distributions #
+####################################
+CZ_cline_params[CZ_cline_params$params=='crab','CZA']
+
+#CZ_cline_params = CZ_cline_params %>% remove_rownames %>% column_to_rownames(var='params')
+
+male_c = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[5]), sd = sqrt(abs(x[9]))))
+apply(male_c, 2, hist)
+female_c = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[5]+x[7]), sd = sqrt(abs(x[9]))))
+apply(female_c, 2, hist)
+male_w = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]), sd = sqrt(abs(x[10]))))
+apply(male_w, 2, hist)
+female_w = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]+x[8]), sd = sqrt(abs(x[10]))))
+apply(female_w, 2, hist)
+#male_h = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]), sd = sqrt(abs(x[10]))))
+#apply(male_w, 2, hist)
+#female_h = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]+x[8]), sd = sqrt(abs(x[10]))))
+#apply(female_w, 2, hist)
+
+eco_list = list(crab=NULL, hyb=NULL, wave=NULL)
+
 crab <- data.frame(log_male=rnorm(10000,mean = 2.4,
                                   sd = sqrt(0.2)),
                    log_female=rep(rnorm(1000,mean = 2.5,
@@ -290,6 +431,17 @@ CZ_cline <- merge(crab,wave,all=TRUE)
 CZ_cline <- merge(CZ_cline,hyb,all=TRUE)
 
 eco_list = list(wave=head(wave),hyb=head(hyb),crab=head(crab))
+
+###################################
+# apply size model to field distr #
+###################################
+#devtools::install_github("rmcelreath/rethinking",force = TRUE)
+#library(rethinking)
+
+
+
+
+
 library(boot)
 test_fun = function(eco_data, female, male, i) {
   list_eco = lapply(eco_data[, female], function(x) {
