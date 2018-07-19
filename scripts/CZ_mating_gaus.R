@@ -50,6 +50,9 @@ CZ_size_params = round(summary(CZ_mat_stan_size, pars = c("level","lambda","aver
                                probs=c(0.25, 0.975))$summary,2)
 CZ_size_params = rownames_to_column(as.data.frame(CZ_size_params), var="params")
 write.table(CZ_size_params, "tables/CZ_size_params.csv", row.names = FALSE, col.names = TRUE,sep = ";")
+CZ_size_params = read.csv("tables/CZ_size_params.csv", sep = ";")
+#sapply(CZ_size_params$params, function(x) rnorm(n = 1000, CZ_size_params$mean[x], sd = CZ_size_params$sd[x])) %>%
+#  apply(., 2, hist)
 
 y_rep = data.frame(y_rep=summary(CZ_mat_stan_size, pars = c("y_rep"))$summary[,'mean'])
 y_rep = rownames_to_column(y_rep, var="rep")

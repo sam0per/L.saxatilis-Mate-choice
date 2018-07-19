@@ -7,6 +7,8 @@ date: "14/05/2018"
 output:
   beamer_presentation:
     incremental: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -123,9 +125,9 @@ ggplot(data = CZ_data) +
 - $\mu$ = preference or preferred trait value
 
 ```{r fig4, message=FALSE}
-CZ_logit_mu = -1.23 + (1 / sqrt(2 * pi * 0.3^2)) * 
-  exp(-0.5*((CZ_data$size_ratio-0.6)/0.3)^2) + 
-  0.6 * CZ_data$size_ratio
+CZ_logit_mu = -6.93 + 30 *
+  exp(-0.5*((CZ_data$size_ratio-0.09)/0.97)^2) +
+  1.5 * CZ_data$size_ratio
 CZ_data$preds_mu = inv.logit(CZ_logit_mu)
 ggplot(data = CZ_data) +
   geom_vline(xintercept = 0) +

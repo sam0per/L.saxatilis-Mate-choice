@@ -4,244 +4,129 @@ author: "Samuel Perini"
 output: pdf_document
 csl: journal-of-evolutionary-biology.csl
 bibliography: library.bib
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# List of packages for session
+.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "tidyverse",
+              "bbmle")
+
+# Install CRAN packages (if not already installed)
+.inst <- .packages %in% installed.packages()
+if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
+
+# Load packages into session 
+lapply(.packages, require, character.only=TRUE)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
 ```
 
+## Abstract
 
-This report includes two logistic regression models that aim to describe the mounting probability in the species _Littorina saxatilis_. The first generalised linear model applies a Bernoulli distribution to the discrete response variable (i.e., mounting success) and generates coefficient estimates for the explanatory variables using maximum likelihood. The second one is also based on a Bernoulli distribution but it uses Bayesian statistics to estimate unknown parameters given the data and a set of prior distributions. It exploits the relationship between the size ratio of the mating pairs and the proportion of successful mountings (Fig. 1). 
+$\vspace{1cm}$
 
-## Data visualisations
+...
+
+Here we describe the impact of the mating patterns on the evolution of reproductive barriers between two ecotypes of _Littorina saxatilis_. Firstly, we determine the relationship between the probability of mounting and the shell sizes of the mating pairs and demonstrate that this relationship is constant across shores and between ecotypes. The statistical model is built from a Bernoulli distribution in a Bayesian framework because it allows us to estimate unknown mating parameters (e.g., preference and choosiness) given the data and a set of prior distributions. Secondly, we explore the genetic basis of mate choice using computer simulations for a preference/trait rule and a matching rule.
 
 $\vspace{0.5cm}$
 
 ```{r fig1, fig.height=4, fig.width=6, fig.align='center', echo=FALSE}
-CZ_glm = read.csv("../CZ_ABCD/final_data/CZABCD_clean.csv",sep = ";")
-breaks <- c(-2,seq(-1.5,1.3,0.15),2)
-bin <- cut(CZ_glm$size_ratio,breaks)
-p_m_obs <- aggregate(CZ_glm$mountYN,by=list(bin,CZ_glm$shore,CZ_glm$ref_ecotype),FUN=mean)[,2:4]
-bin_mean <- aggregate(CZ_glm$size_ratio,by=list(bin,CZ_glm$shore,CZ_glm$ref_ecotype),FUN=mean)[,4]
-CZ_glm$count = 1
-bin_sum <- aggregate(CZ_glm$count,by=list(bin,CZ_glm$shore,CZ_glm$ref_ecotype),FUN=sum)[,4]
-CZ_glm_bin <- data.frame(cbind(shore=p_m_obs[,1],ref_ecotype=p_m_obs[,2],mount=p_m_obs[,3],
-                               size_ratio=bin_mean,count=bin_sum))
-CZ_glm_bin$shore = as.factor(CZ_glm_bin$shore)
-levels(CZ_glm_bin$shore) = c("CZA","CZB","CZC","CZD")
-CZ_glm_bin$ref_ecotype = as.factor(CZ_glm_bin$ref_ecotype)
-levels(CZ_glm_bin$ref_ecotype) = c("crab","wave")
-library(ggplot2)
-CZ_glm_bin$line = 0
-ggplot(data = CZ_glm_bin,aes(size_ratio,mount,col=as.factor(ref_ecotype))) +
-  geom_point(aes(size=CZ_glm_bin$count)) +
-  geom_vline(xintercept = CZ_glm_bin$line) +
-  facet_wrap(~ as.factor(CZ_glm_bin$shore)) +
-  scale_color_manual(values=c("gold2","blue")) +
-  labs(col="ref ecotype",size="bin size",x="female size - male size (ln)",
-       y="proportion of mounts in each bin",title = "Observed mounting") +
-  theme(legend.title = element_text(size = 11,face = "bold"),
-        axis.title = element_text(face = "bold"),
-        plot.title = element_text(size = 13,face = "bold",hjust = 0.5))
+CZ_data = read.csv("tables/CZ_size_mating.csv",sep = ";")
+breaks = c(-2,seq(-1.5,1.5,0.1),2)
+CZ_data$bin = cut(CZ_data$size_ratio,breaks)
+CZ_data_bin <- 
+  CZ_data %>%
+  group_by(bin) %>%
+  dplyr::summarise(mount = mean(mountYN), 
+                   uci_mount = CI(mountYN)['upper'], 
+                   lci_mount = CI(mountYN)['lower'],
+                   mean_ratio = mean(size_ratio),
+                   y_rep = mean(y_rep),
+                   preds_mount = mean(y_preds)) %>% 
+  mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
+
+ggplot(data = CZ_data) +
+  geom_vline(xintercept = 0, alpha=0.6) +
+  geom_vline(xintercept = as.numeric(CZ_data_bin[which.max(CZ_data_bin$mount),'mean_ratio']),
+             linetype='dashed', alpha=0.4) +
+  geom_errorbar(data = CZ_data_bin, aes(x = mean_ratio, ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
+  scale_colour_manual(values=c("blue")) +
+  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
+  scale_x_continuous(breaks=seq(-1.5,1.5,0.5)) +
+  labs(size="bin size",x="female - male size (ln)",
+       y="probability of mounting",col="") +
+  theme(axis.title = element_text(face = "bold", size = 13))
+
 ```
 \fontsize{8}{9}
 \selectfont
-Figure 1. **Normal distribution of the frequency of mounting success against the shell size difference in mating pairs.** Each dot consists of the average number of mounting events occurred within a specific range of shell size (0.15 in the log scale). The number of mating pairs for each size interval is proportional to the dimensions of the points (yellow = crab reference ecotype, blue = wave reference ecotype). 
+Figure 1. **Gaussian relationship between proportion of mounting success and female-male size ratio.** Each blue dot consists of the average number of mounting events (y axis) occurred within a specific range of shell size (x axis in the natural logarithmic scale). Grey error bars represent 95% confidence interval. 
 \normalsize
 
 \newpage
 
 ## Materials and methods
 
-**1. Standard logistic regression**
-
-All possible mating models have been generated using additive effects and two-way interactions between a total of seven explanatory variables (i.e., female size, test shell shape, ratio between female and male shell size, ratio squared, ratio cube, reference ecotype and shore). The various model subsets had the common binary response defined as mounting success. The final logistic regression model was selected according to two information criteria, AIC and BIC, because the top four models showed a non-significant difference for either the criterion (default threshold of 2).
-
-```{r}
-CZ_crit = read.csv("../CZ_ABCD/results/CZABCD_bestsub.csv",sep = ";")
-
-# final model with the lowest AIC and BIC
-(ABIC = with(CZ_crit,frml[AIC <= 3853 & BIC <= 3930]))
-
-# models with the lowest AIC
-(AIC = with(CZ_crit,frml[AIC >= 3851 & AIC <= 3853]))
-
-# model with the lowest BIC
-(BIC = with(CZ_crit,frml[BIC >= 3922 & BIC <= 3924]))
-
-```
+### _SAMPLING_
 
 
-$\vspace{1cm}$
 
-All the above models contains similar effects with the exception of those that include the interaction with the reference ecotype. This coefficient appears in four out of six top models and it holds a crucial role for the biological interpretation of the mating pattern. A significant interaction with the reference ecotype would indicate a potential influence of the ecotype variation on the probability of mounting (Table 1). A scenario in which assortative mating occurred by ecotype would corroborate previous studies that identified a predominant role of ecotype and shell shape in mating frequency, copulation time and mucous trail discrimination [@Hollander2005; @Johannesson2008]. The most evident effect of the reference ecotype is mainly observed in shore CZD where the size ratio optimum differs between mating pairs of the crab and wave reference snail (Fig. 1). This unique pattern in connection with the lower proportion of mounting success might suggest to treat CZD as an outlier shore. **(comments needed)**
+### _PHENOTYPES_
+
+
+
+### _NO-CHOICE MATING EXPERIMENT_
+
+
+
+### _GAUSSIAN FORMULATION_
+
+The Gaussian formula is a hierarchical model built under a Bayesian framework that allows to predict the probability of mounting success and to estimate directly the parameters for chossiness or strength of preference $\Sigma$ and preference or preferred trait value $M$. It is hierarchical because the prior distribution for the parameters are given an additional layer of information in order to maintain sufficient flexibility or uncertainty for potential data points that do not strictly follow our expectations. Sexual selection and assortative mating are then emergent properties, measured by the correlation between male trait value and mating success (sexual selection) or the correlation between male and female traits (assortative mating). To give an example, when $M = 0$, the most successful pairs are those with no difference in size between the female and the male (like mates with like scenario). Other values of $M$ instead would indicate a favourable size ratio which could be either negative (females smaller than males scenario) or positive (females larger than males scenario). All three scenarios involve a non-zero effect of assortative or disassortative mating. Random mating occurs when choosiness is large and the mounting probability tends to be uniform across the available range of size ratio.
 
 $\vspace{0.5cm}$
 
-\small
-```{r table1, echo=FALSE, results='asis'}
-library(descr, quietly = TRUE)
-library(pander)
-CZ_eco_mod = glm(mountYN ~ size_ratio2+log_female:shore+Shape:ref_ecotype+size_ratio:ref_ecotype+
-                   size_ratio3:shore, family = binomial, data = CZ_glm)
-pander(CZ_eco_mod)
-```
-\normalsize
+The mate-choice equation aims to detect relevant deviations from the basic assumption of size-assortative mating. The simplest form of the model contains five parameters, each of which can include further phenotypic variables as covariates and, consequently, increase the model complexity. The first parameter, $A$, defines the intercept of the mating curve and the second one, $\Lambda$, modifies the scale of the curve for a computed estimate of the third parameter $M$ (i.e., preference) and the fourth parameter $\Sigma$ (i.e., choosiness). The preference stands for the value of size ratio with the highest probability of mounting, the peak of the curve, and choosiness determines the decline of the mounting probability as the width of the curve. Finally, the fifth paramter, $\Gamma$, controls for the asymmetry between the left and the right end tails.
 
-\newpage
+$$mountYN_i \sim Bin(1, p_i), logit(p_i) = A + \Lambda * e^{-\frac{(ratio_i-M)^2}{2\Sigma^2}} + \Gamma * ratio_i$$
 
-**2. Gaussian formulation**
+Additionally, the term $A$ can depend on the shore, the ecotype and shape covariates.
 
-The mating Gaussian formula is a hierarchical model built under a Bayesian framework that allows to predict the probability of mounting success and to estimate directly the parameters for sexual selection $\sigma$ and assortative mating $\mu$. It is hierarchical because the prior distribution for the parameters are given an additional layer of information in order to maintain sufficient flexibility or uncertainty for potential data points that do not strictly follow our expectations. The formula can also account for the strength of mate choice because the mean and the standard deviation of the mounting probability curve can be treated as the amount of trait correlation in the successful pairs (i.e., assortment component or preference) and the measure of variation in mounting success within one sex (i.e., sexual selection component or choosiness), respectively. To give an example, when $\mu = 0$, the most successful pairs are those with no difference in size between the female and the male (like mates with like scenario). Other values of $\mu$ instead would indicate a favourable size ratio which could be either negative (females smaller than males scenario) or positive (females larger than males scenario). All three scenarios involve a non-zero effect of assortative or disassortative mating. 
+$$A_i = \alpha_{1,shore_i} + \alpha_{2,eco_i} + \alpha_3 * shape_i$$
 
-_However, this might need further attention because assortative mating is never absent in the model._ **(comments needed)**
+The same relationship between covariates can also be added into the other terms.
 
-$\vspace{0.5cm}$
+$$\Lambda_i = \lambda_{1,shore_i} + \lambda_{2,eco_i} + \lambda_3 * shape_i$$
 
-This equation aims to model the relationship between size ratio and the proportion of successful mounting events using a Gaussian formulation surrounded by two terms (i.e., $level$ and $rtail$) which allow for deviations from the standard bell-shaped curve (Fig. 1). 
+$$M_i = \mu_{1,shore_i} + \mu_{2,eco_i} + \mu_3 * shape_i$$
 
-$$mountYN_i \sim Bin(1, p_i), logit(p_i) = level_i + \frac{1}{\sqrt{2 \pi \sigma_i^2}} e^{-\frac{(ratio_i-\mu_i)^2}{2\sigma_i^2}} + rtail_i$$
+$$\Sigma_i = \sigma_{1,shore_i} + \sigma_{2,eco_i} + \sigma_3 * shape_i$$
 
-The term $level$ controls for the height (not the peak) of the curve and it is defined by $\alpha$, $\delta$ and $\beta$ parameters such that:
-
-$$level_i = \alpha_{\mbox{shore}_i} + \delta_{\mbox{eco}_i} + \beta * shape_i$$
-
-The term $\mu$ is the mean of the curve and it determines the value of size ratio with the highest probability of mounting, the peak of the curve. This component is dependent on three covariates and respective parameters $\alpha\_av$, $\delta\_av$ and $\beta\_av$:
-
-$$\mu_i = \alpha\_av_{\mbox{shore}_i} + \delta\_av_{\mbox{eco}_i} + \beta\_av * shape_i$$
-
-The term $\sigma$ controls for the standard deviation or width of the bell curve and it depends on the covariates shore, ecotype and shape according to the following relationship:
-
-$$\sigma_i = \alpha\_sd_{\mbox{shore}_i} + \delta\_sd_{\mbox{eco}_i} + \beta\_sd * shape_i$$
-
-Finally, the component $rtail$ constitutes the linear effect that captures the observed asymmetry between the left and right end tail of the curve. It is defined as:
-
-$$rtail_i = \alpha\_ta_{\mbox{shore}_i} + \delta\_ta_{\mbox{eco}_i} +\gamma\_ta * size\_ratio_i + \beta\_ta * shape_i$$
+$$\Gamma_i = \gamma_{1,shore_i} + \gamma_{2,eco_i} + \gamma_3 * shape_i$$
 
 $\vspace{0.5cm}$
 
-The terms of the main equation are defined as linear effects of the phenotypic variables measured during the mating experiment. Each explanatory variable is associated with either an intercept parameter (i.e., $\alpha$'s or $\delta$'s) or a regression coefficient (i.e., $\beta$'s or $\gamma$). The intercept and regression coefficients are the unknown and desired parameters whose posterior distributions are sampled from weakly informative priors as recommended by the Stan authors [[web reference](https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations)]. Suitable priors for logistic regression coefficients are Student-t distributions because they present light tails that can adapt reasonably well to the data while enabling the production of robust posterior distributions [@Ghosh2017]. However, our model did not reach convergence when these guidelines were transferred to our data. Although the present analysis computes the predicted probability of mounting using a Bernoulli distribution, the final choice of the prior distributions was based on the recommendations for hierarchical models [@Gelman2006]. The half-Cauchy family was selected to restrict very large values of standard deviations and to improve the behaviour around 0.
+The initial model is extended with a linear effects between shore, ecotype and shape variables for each of the five parameters. The two intercept coefficients are indicative of the shore and the ecotype values, respectively. The regression coefficients are representative for the shape measures.
+
+The intercept and regression coefficients are the unknown and desired parameters whose posterior distributions are sampled from weakly informative priors as recommended by the Stan authors [[web reference](https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations)]. Suitable priors for logistic regression coefficients are Student-t distributions because they present light tails that can adapt reasonably well to the data while enabling the production of robust posterior distributions [@Ghosh2017]. However, our model did not reach convergence when these guidelines were transferred to the data. Although the present analysis computes the predicted probability of mounting using a Bernoulli distribution, the final choice of the prior distributions was based on the recommendations for hierarchical models [@Gelman2006]. The half-Cauchy family was selected to restrict very large values of standard deviations and to improve the behaviour around 0.
 
 The importance of each coefficient is established by its posterior distribution which also corresponds to the uncertainty of the parameter estimate. A parameter with posterior distribution that is centred at zero is indicative of an irrelevant effect of the corresponding covariate on the probability of mounting. The opposite is true when the mean of the posterior distribution is shifted from zero.
 
 $\vspace{1cm}$
 
-## Preliminary results and discussion
+\newpage
+## Results
 
-**1. Standard logistic regression**
 
-The AIC values do not point towards one single and consistent relationship between the explanatory variables and mounting success whereas the results from the BIC can be used to identify the best model. If the two criteria are combined, the model with both the lowest AIC and BIC shows a significant effect of shape, size ratio, size ratio squared, interaction between female size and shore and between shore and size ratio cube (Table 2).
-
-$\vspace{0.5cm}$
-
-\small
-```{r table2, echo=FALSE, results='asis'}
-CZ_log_mod = glm(mountYN ~ Shape+size_ratio+size_ratio2+log_female:shore+size_ratio3:shore,
-                 family = binomial,data = CZ_glm)
-pander(CZ_log_mod)
-```
-\normalsize
 
 $\vspace{1cm}$
 
-The model selection procedure based on the two information criteria requires an additional step to assess the performance of the logistic regression. The ability to predict the response variable mounting success can be estimated using re-sampling techniques such as cross-validation and bootstrap. In our case, repeated 10-fold cross-validation was applied before the measurement of accuracy for each top models. There is no evident difference between accuracy estimates and all the model coincides in terms of predictive performance (Table 3). However, the biological implications can be rather different when the model includes the ecotype term (Mod2, Mod3, Mod4 and Mod5). 
+The model selection procedure based on the two information criteria requires an additional step to assess the performance of the logistic regression. The ability to predict the response variable mounting success can be estimated using re-sampling techniques such as cross-validation and bootstrap. In our case, repeated 10-fold cross-validation was applied before the measurement of accuracy for each top models. There is no evident difference between accuracy estimates and all the model coincides in terms of predictive performance (Table 3). 
 
 $\vspace{0.5cm}$
-\newpage
-\fontsize{8}{9}
-\selectfont
-\begin{center}
-Table 3. Performance estimates of the six top model.
-\end{center}
-\small
-```{r table3, message=FALSE, warning=FALSE, echo=FALSE}
-library(caret)
-library(pROC)
-CZ_glm$mountYN <- as.factor(ifelse(CZ_glm$mountYN==1,"yes","no"))
-IC = unique(unlist(list(AIC,BIC,ABIC)))
-# Data partitioning
-inTrain <- createDataPartition(CZ_glm$mountYN, p = .8)[[1]]
-CZ_glmTrain <- CZ_glm[ inTrain, ]
-CZ_glmTest  <- CZ_glm[-inTrain, ]
-# random partition in 10 sets replicated 10 times
-objControl.glm <- trainControl(method='repeatedcv', number=10, repeats = 5,
-                               classProbs = TRUE, selectionFunction = "oneSE")
-# logistic regression of six the top models for each set and replicate
-CZ_mods.glm = lapply(as.character(IC), function(frml) train(as.formula(frml), data=CZ_glmTrain,
-                                                            method ='glm',family =binomial,
-                                                            trControl=objControl.glm))
-# accuracy of each top model to predict mounting success
-# number of true negatives (pred no, ref no), false positives (no,yes), 
-# false negatives (yes,no) and true positives (yes,yes)
-predictedClasses <- predict(CZ_mods.glm, CZ_glmTest)
-CZ_acc.glm = lapply(predictedClasses, function(mod) confusionMatrix(mod, CZ_glmTest$mountYN))
-CZ_accu = sapply(CZ_acc.glm, "[", c("overall"))
-CZ_accu = as.data.frame(CZ_accu)
-names(CZ_accu) = c("Mod1","Mod2","Mod3","Mod4","Mod5","Mod6")
-# from logit to probabilities 
-predictedProbs <- predict(CZ_mods.glm, newdata = CZ_glmTest, type = "prob")
-# extract only the probability of mounting success
-predictedProbs = sapply(predictedProbs, "[", c("yes"))
-# calculate the are under the curve
-CZ_auc = sapply(predictedProbs, function(probs) roc(CZ_glmTest$mountYN,probs))["auc",]
-CZ_auc = as.data.frame(CZ_auc)
-row.names(CZ_auc) = "AUC"
-names(CZ_auc) = c("Mod1","Mod2","Mod3","Mod4","Mod5","Mod6")
-panderOptions('table.split.table',Inf)
-panderOptions('table.caption.prefix', '')
-pander(rbind(CZ_accu,CZ_auc))
-```
-\normalsize
-
-$\vspace{0.5cm}$
-
-An area under the curve (AUC) between 0.70 and 0.80 is typical of models that fairly discriminate between negative and positive results [[web reference](https://kennis-research.shinyapps.io/ROC-Curves/)]. All the six models would be appropriate for the description of the relationship between the probability of mounting and the shell dimensions (Fig. 2). 
-
-Shape and size ratio were obvious candidates for the models but female size is quite surprising and might affect the meaning of the mounting relationship. Perhaps male size should be added too. The second unexpected result is the equality in terms of model performance between the regressions with and without the interaction of shape and reference ecotype. All the models are statistically plausible, graphically indistinguishable but biologically ambiguous. **(comments needed)**
-
-$\vspace{0.5cm}$
-
-```{r fig2, out.width='.49\\linewidth', fig.height=4, fig.width=6, fig.show='hold', fig.align='center', echo=FALSE}
-objModel.glm = train(mountYN ~ size_ratio+size_ratio2+log_female:Shape+log_female:shore+
-                       size_ratio3:shore,
-                      data = CZ_glm,
-                      method='glm', family=binomial,
-                      trControl=objControl.glm)
-CZ_glm$mount_probs = predict(objModel.glm$finalModel, type = "response")
-CZ_glm$line = 0
-ggplot(data = CZ_glm,aes(size_ratio,mount_probs,col=ref_ecotype)) +
-  facet_wrap(~ as.factor(CZ_glm$shore)) +
-  geom_point(size=0.8) +
-  geom_vline(xintercept = CZ_glm$line) +
-  scale_color_manual(values=c("gold2","blue")) +
-  labs(col="ref ecotype",size="bin size",x="female size - male size (ln)",
-       y="predicted probability of mounting", title = "Predicted mounting probability") +
-  theme(legend.title = element_text(size = 11,face = "bold"),
-        axis.title = element_text(face = "bold"),
-        plot.title = element_text(size = 13,face = "bold",hjust = 0.5))
-
-ggplot(data = CZ_glm_bin,aes(size_ratio,mount,col=as.factor(ref_ecotype))) +
-  geom_point(aes(size=CZ_glm_bin$count)) +
-  geom_vline(xintercept = CZ_glm_bin$line) +
-  facet_wrap(~ as.factor(CZ_glm_bin$shore)) +
-  scale_color_manual(values=c("gold2","blue")) +
-  labs(col="ref ecotype",size="bin size",x="female size - male size (ln)",
-       y="proportion of mounts in each bin",title = "Observed mounting") +
-  theme(legend.title = element_text(size = 11,face = "bold"),
-        axis.title = element_text(face = "bold"),
-        plot.title = element_text(size = 13,face = "bold",hjust = 0.5))
-```
-\small
-Figure 2. **Comparison between predicted probabilities and observed mounting events.** Relationship between the difference in shell size of the mating pairs and the predicted probability of mounting success under one of the top six logistic regression models, each dot consists of one mating pair (left-hand side). Main relationship between the difference in shell size of the mating pairs and successful mounting events, each dot consists of the average number of events occurred within a specific size difference of 0.15 in the log scale (right-hand side).   
-\normalsize
-
-
-\newpage
-Alternatives to generalised linear models are other classification models such as random forest or discriminant analysis (and there are many many more). Nevertheless, if the best subset selection step is maintained, these new methods might only return a higher or lower accuracy without a proper rejection of some of the top six models. One or two alternative methods should be fairly straightforward to implement into the present pipeline and then compare it with the logistic regression metrics. Here, I have only reported the Bayesian substitute.
-
-$\vspace{0.5cm}$
-
-**2. Gaussian formulation**
 
 Most of the parameters coefficients are centred close to zero to a degree of uncertainty that depends on the different type of shores (Fig. 3, left panel), on the variation in the reference ecotype (Fig. 3, middle panel), on the shape of the test snails and size ratio of the mating pairs (Fig. 3, right panel). Particularly, the first three contact zones, CZA, CZB and CZC, show consistent parameter values compared to the fourth contact zone CZD which is determined by a lower $\alpha$ and smaller $\alpha\_ta$. Negative coefficients of these parameters correspond to a reduced $level$ or curve height and a weak $rtail$ or asymmetry between right and left end tails (Fig. 4). The terms $level$ and $rtail$ show also a distinction between ecotypes (Fig. 3, middle panel). The mating pairs composed by the wave reference are predicted to yield the lowest probability of mounting success (Fig. 4, bottom-left) and a nearly neutral asymmetry in successful events across the two ends of the probability curve (Fig. 4, bottom-right).
 
@@ -249,7 +134,7 @@ The other parameter that shows a shore-specific trend is $\alpha\_sd$ as it take
 
 $\vspace{0.5cm}$
 
-![left panel](../CZ_ABCD/figures/CZ_ABCD_gau1_alphas.pdf){ width=33% } ![middle panel](../CZ_ABCD/figures/CZ_ABCD_gau1_deltas.pdf){ width=33% } ![right panel](../CZ_ABCD/figures/CZ_ABCD_gau1_betas.pdf){ width=33% }
+![fig3](figures/gaus_size_pars_dens.pdf){ width=33% }
 \fontsize{8}{9}
 \selectfont
 Figure 3. **The range of the parameter values is indicative to the effect of the associated covariate on the probability of mounting.** Mean (black filled dot), 80% (red line) and 90% (black line) confidence intervals of the parameter posterior distribution. The left panel shows the first intercept coefficients $\alpha$'s for each shore (one = CZA, two = CZB, three = CZC, four = CZD), the middle panel contains the second intercept coefficients $\delta$'s for each ecotype (one = crab, two = wave) and the right panel illustrates the regression coefficients $\beta$'s and $\gamma$ for shape and size ratio, respectively. A mean estimate equal to zero corresponds to a negligible effect of the associated explanatory variable.
@@ -446,7 +331,7 @@ pander(CZ_gau2_ref)
 
 \newpage
 
-## Preliminary conclusions
+## Discussion
 
 **1. Standard logistic regression**
 
