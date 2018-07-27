@@ -7,8 +7,8 @@ rm(list = ls())
 #(.packages())
 
 # List of packages for session
-.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "tidyverse",
-              "bbmle")
+.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
+              "bbmle", "loo", "ggpubr", "cowplot", "purrr", "reshape2")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -37,17 +37,27 @@ summary(CZ_data)
 # stan model with only size #
 #############################
 rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores())
+options(mc.cores = parallel::detectCores() - 1)
+
+
+dat = list(N = nrow(CZ_data), y = CZ_data$mountYN, ratio = CZ_data$size_ratio)
+dat$posterior_predictive = 1
+
+fit.prior.pred = stan(file = "scripts/CZ_mating_gaus_prior_size.stan", data = dat)
 
 
 CZ_mat_stan_size = stan(file = "scripts/CZ_mating_gaus_size.stan", data = list(N = nrow(CZ_data),
                                                                                y = CZ_data$mountYN,
                                                                                ratio = CZ_data$size_ratio))
+CZ_size_pars = CZ_mat_stan_size@model_pars[1:5]
 pdf("figures/gaus_size_pars_dens.pdf")
-stan_dens(CZ_mat_stan_size, pars = c("level","lambda","aver","stan_dev","gamma_ta"))
+stan_dens(CZ_mat_stan_size, pars = c("level","scale","preference","choosiness","asymmetry"))
 dev.off()
-CZ_size_params = round(summary(CZ_mat_stan_size, pars = c("level","lambda","aver","stan_dev","gamma_ta"),
-                               probs=c(0.25, 0.975))$summary,2)
+pdf("figures/gaus_size_pars_plot.pdf")
+stan_plot(CZ_mat_stan_size, pars = c("level","scale","preference","choosiness","asymmetry"))
+dev.off()
+
+CZ_size_params = round(summary(CZ_mat_stan_size, pars = CZ_size_pars,probs=c(0.25, 0.975))$summary,2)
 CZ_size_params = rownames_to_column(as.data.frame(CZ_size_params), var="params")
 write.table(CZ_size_params, "tables/CZ_size_params.csv", row.names = FALSE, col.names = TRUE,sep = ";")
 CZ_size_params = read.csv("tables/CZ_size_params.csv", sep = ";")
@@ -115,7 +125,7 @@ CZ_data$lci_preds = CZ_data$preds-1.96*CZ_logit_se
 # plot observs and preds for size #
 ###################################                                                    
 y = CZ_data$mountYN
-y_rep = extract(CZ_mat_stan_size, pars = 'y_rep', permuted = TRUE)$y_rep
+y_rep = rstan::extract(CZ_mat_stan_size, pars = 'y_rep', permuted = TRUE)$y_rep
 dim(y_rep)
 ppc_bars(y,y_rep)
 breaks = c(-2,seq(-1.5,1.5,0.1),2)
@@ -263,6 +273,7 @@ CZ <- merge(CZ,CZD,all = TRUE)
 CZall = CZ[!is.na(CZ$Shape) & CZ$log_female>0.5,]
 write.table(CZall, "data/CZ_all_mating_clean.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 CZ_all = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+CZ_data = read.csv("tables/CZ_size_mating.csv", sep = ";")
 identical(sort(CZ_all$size_ratio), sort(CZ_data$size_ratio))
 
 cline_2c3s <- function(phen,position,sex,cl,cr,wl,wr,crab,wave,zs_c,zs_w,sc,sh,sw){
@@ -317,7 +328,7 @@ for (p in levels(CZ_all$shore)) {
   if (p=='CZA'){
     plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=170,cr=280,wl=20,wr=10,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    theta.init = list(cl=170,cr=280,wl=20,wr=10,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.1,sw=0.2)
     mle.cline.2c3s$CZA = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
@@ -327,7 +338,7 @@ for (p in levels(CZ_all$shore)) {
   else if (p=='CZB'){
     plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=70,cr=125,wl=5,wr=50,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    theta.init = list(cl=70,cr=125,wl=5,wr=50,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.1,sw=0.2)
     mle.cline.2c3s$CZB = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
@@ -337,7 +348,7 @@ for (p in levels(CZ_all$shore)) {
   else if (p=='CZC'){
     plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=50,cr=125,wl=10,wr=20,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    theta.init = list(cl=50,cr=125,wl=10,wr=20,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.1,sw=0.2)
     mle.cline.2c3s$CZC = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
@@ -347,7 +358,7 @@ for (p in levels(CZ_all$shore)) {
   else {
     plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=80,cr=165,wl=5,wr=10,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sw=0.2)
+    theta.init = list(cl=80,cr=165,wl=5,wr=10,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.1,sw=0.2)
     mle.cline.2c3s$CZD = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
@@ -359,13 +370,19 @@ for (p in levels(CZ_all$shore)) {
 
 (CZ_cline_params = sapply(mle.cline.2c3s, function(x) round(coef(x), 2)))
 CZ_cline_params = rownames_to_column(as.data.frame(CZ_cline_params), var="params")
+CZ_cline_params_sh = round(sapply(CZ_cline_params[-1], function(x) sqrt(x[9]^2 + 4*0.5*(1-0.5)*x[10]^2 +
+                                                                          (0.5^2)*(x[11]^2-x[9]^2))), 2)
+CZ_cline_params[10,-1] = CZ_cline_params_sh
 write.table(CZ_cline_params, "tables/CZ_cline_params.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 
 (CZ_cline_se = sapply(mle.cline.2c3s, function(x) round(sqrt(diag(vcov(x))), 2)))
+CZ_cline_se = rownames_to_column(as.data.frame(CZ_cline_se), var="params")
 write.table(CZ_cline_se, "tables/CZ_cline_se.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 
 sapply(mle.cline.2c3s, function(x) summary(x))
 sapply(mle.cline.2c3s, function(x) AIC(x))
+
+
 
 
 CZ_all %>% group_by(shore, sex) %>% dplyr::summarise(mean_size=mean(log(length_mm)))
@@ -388,27 +405,568 @@ CZ_all_bin %>%
     theme(axis.title = element_text(face = "bold"))
 dev.off()
 
+###################################
+# apply size model to field distr #
+###################################
+
+# generate size distributions for each sex and ecotype using cline parameters
+CZ_cline_params = read.csv("tables/CZ_cline_params.csv", sep = ";")
+
+male_c = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[5]), sd = abs(x[9]))),2)
+apply(male_c, 2, hist)
+female_c = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[5]+x[7]), sd = abs(x[9]))),2)
+apply(female_c, 2, hist)
+male_w = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]), sd = abs(x[11]))),2)
+apply(male_w, 2, hist)
+female_w = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]+x[8]), sd = abs(x[11]))),2)
+apply(female_w, 2, hist)
+male_h = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs((x[5]+x[6])/2), sd = abs(x[10]))),2)
+apply(male_h, 2, hist)
+female_h = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs((x[5]+x[6]+x[7]+x[8])/2),
+                                                         sd = sqrt(abs(x[10])))),2)
+apply(female_h, 2, hist)
+
+# pair each female with every male within habitat and contact zone and compute mounting success YN
+CZ_size_params = read.csv("tables/CZ_size_params.csv", sep = ";")
+
+###############
+## crab habitat
+###############
+CZ_cline_mountYN_c = matrix(nrow = nrow(female_c), ncol = nrow(male_c))
+CZ_clines_YN_c = list()
+for (i in 1:ncol(female_c)){
+  for (j in 1:nrow(female_c)) {
+    CZ_cline_mountYN_c[j,] = rbinom(n = nrow(female_c), size = 1,
+                                    prob = inv.logit(CZ_size_params$mean[CZ_size_params$params=='level'] +
+                                                       CZ_size_params$mean[CZ_size_params$params=='scale'] *
+                                                       exp(-0.5 * (((female_c[j,i] - male_c[,i]) -
+                                                                      CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                                                                     CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+                                                       CZ_size_params$mean[CZ_size_params$params=='asymmetry'] *
+                                                       (female_c[j,i] - male_c[,i])))
+    
+  }
+  CZ_clines_YN_c[[i]] = CZ_cline_mountYN_c
+  names(CZ_clines_YN_c)[i] = colnames(female_c)[i]
+}
+
+# random sample of 1 successful male per female (variation in mounting success only in males)
+CZ_clines_Yidx_c = lapply(CZ_clines_YN_c, function(x) which(x==1, arr.ind = TRUE)) %>%
+  lapply(., function(x) as.data.frame(x[order(x[,'row']), ])) %>%
+  map(., function(x) group_by(x, row)) %>% map(., function(x) sample_n(x, size = 1, replace = TRUE))
+  
+# retrieve sizes (ln) of the sampled males from the generated male size distribution
+CZ_clines_Y_mc_size = lapply(names(CZ_clines_Yidx_c), function(x) male_c[CZ_clines_Yidx_c[[x]][['col']], x])
+names(CZ_clines_Y_mc_size) = names(CZ_clines_Yidx_c)
+lapply(CZ_clines_Y_mc_size, function(x) head(x))
+#male_c[1991,'CZA']
+
+
+# density plot of the size of successful males
+CZ_fill = rainbow(4)
+names(CZ_fill) = names(CZ_clines_Y_mc_size)
+map(names(CZ_clines_Y_mc_size), function(x) {
+  ggplot() +
+    geom_density(aes(CZ_clines_Y_mc_size[[x]], fill=x)) +
+    scale_fill_manual(name = '', values = CZ_fill[x])
+})
+
+# compute predicted probabilities using the Gaussian formula between simulated mated pairs
+CZ_clines_Y_mfc_preds = lapply(names(CZ_clines_Y_mc_size), function(x) {
+  CZ_size_params$mean[CZ_size_params$params=='level'] + CZ_size_params$mean[CZ_size_params$params=='scale'] *
+    exp(-0.5 * (((female_c[,x] - CZ_clines_Y_mc_size[[x]]) - CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                  CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+    CZ_size_params$mean[CZ_size_params$params=='asymmetry'] * (female_c[,x] - CZ_clines_Y_mc_size[[x]])
+} %>% inv.logit)
+names(CZ_clines_Y_mfc_preds) = names(CZ_clines_Yidx_c)
+
+# scatter plot and fitted polynomial linear model of successful male sizes against predicted probabilities
+mc_fit_plot = map(names(CZ_clines_Y_mc_size), function(x) {
+  ggplot() +
+    geom_point(aes(x = CZ_clines_Y_mc_size[[x]], y = CZ_clines_Y_mfc_preds[[x]], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    geom_smooth(aes(x = CZ_clines_Y_mc_size[[x]], y = CZ_clines_Y_mfc_preds[[x]]), method="lm",
+                formula=y~poly(x,2)) +
+    labs(x = "succ. male size (ln)", y = "predicted probability", title = paste0(x, " crab")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_Y_mc_size[[x]]),0.5)) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_sexsel_mc_fitplot.pdf")
+do.call(ggarrange, mc_fit_plot)
+dev.off()
+
+# proportion of mountings for each sampled successful male paired with all the females
+CZ_clines_fmc_YN = lapply(names(CZ_clines_Yidx_c), function(x) CZ_clines_YN_c[[x]][, CZ_clines_Yidx_c[[x]][['col']]])
+names(CZ_clines_fmc_YN) = names(CZ_clines_Yidx_c)
+CZ_clines_fmc_mean = lapply(CZ_clines_fmc_YN, function(x) apply(x, 2, mean))
+lapply(CZ_clines_fmc_mean, function(x) head(x))
+CZ_clines_Y_mc_size2 = lapply(names(CZ_clines_fmc_YN), function(x) male_c[CZ_clines_Yidx_c[[x]][['col']], x])
+names(CZ_clines_Y_mc_size2) = names(CZ_clines_fmc_YN)
+identical(CZ_clines_Y_mc_size2$CZD, CZ_clines_Y_mc_size$CZD)
+CZ_clines_mc_ss = lapply(1:4, function(x) cbind(male_size=CZ_clines_Y_mc_size2[[x]],
+                                                probs = round(CZ_clines_fmc_mean[[x]], 2))) %>%
+  map(., function(x) as.data.frame(x))
+names(CZ_clines_mc_ss) = names(CZ_clines_Yidx_c)
+
+mc_mean_plot = map(names(CZ_clines_mc_ss), function(x) {
+  ggplot() +
+    geom_point(aes(x = CZ_clines_mc_ss[[x]][,'male_size'], y = CZ_clines_mc_ss[[x]][,'probs'], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    geom_smooth(aes(x = CZ_clines_mc_ss[[x]][,'male_size'], y = CZ_clines_mc_ss[[x]][,'probs']),
+                method="lm", formula=y~poly(x,2)) +
+    labs(x = "succ. male size (ln)", y = "mean predicted probability", title = paste0(x, " crab")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_mc_ss[[x]]),0.5)) +
+    ylim(0, max(CZ_clines_mc_ss[[x]][,'probs'])) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_ss_mc_fitmean.pdf")
+do.call(ggarrange, mc_mean_plot)
+dev.off()
+
+# plot binned sizes of successful males against predicted probabilities
+lapply(CZ_clines_Y_mc_size, function(x) range(x))
+lapply(CZ_clines_Y_mc_size, function(x) head(x))
+mc_breaks = c(1, seq(1.5,3.2,0.1), 4)
+mc_bin = lapply(CZ_clines_Y_mc_size, function(x) cut(x, mc_breaks))
+CZ_clines_c_sexsel= lapply(1:4, function(x) cbind(male_size=CZ_clines_Y_mc_size[[x]],
+                                                  probs = round(CZ_clines_Y_mfc_preds[[x]], 2),
+                                                  bin = mc_bin[[x]])) %>% map(., function(x) as.data.frame(x)) %>%
+  map(., function(x) group_by(x, bin)) %>%
+  purrr::map(., function(df) {summarize_all(df, funs(mean,min,max))})
+names(CZ_clines_c_sexsel) = names(CZ_clines_Yidx_c)
+
+mc_bin_plot = map(names(CZ_clines_c_sexsel), function(x) {
+  ggplot() +
+    geom_smooth(aes(x = CZ_clines_c_sexsel[[x]][,'male_size_mean'], y = CZ_clines_c_sexsel[[x]][,'probs_mean']),
+                method="lm", formula=y~poly(x,2)) +
+    geom_point(aes(x = CZ_clines_c_sexsel[[x]][,'male_size_mean'], y = CZ_clines_c_sexsel[[x]][,'probs_mean'], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    labs(x = "mean succ. male size (ln)", y = "mean predicted probability", title = paste0(x, " crab")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_c_sexsel[[x]]),0.5)) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_sexsel_mc_fitbin.pdf")
+do.call(ggarrange, mc_bin_plot)
+dev.off()
+
+mc_bin_dens = map(names(CZ_clines_sexsel), function(x) {
+  ggplot() +
+    geom_density(aes(x = CZ_clines_sexsel[[x]][,'male_size_mean'], y = CZ_clines_sexsel[[x]][,'probs_mean'], col=x),
+                 stat = 'identity') +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    labs(x = "succ. male size (ln)", y = "predicted probability")
+})
+
+
+
+#################
+## hybrid habitat
+#################
+male_h = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs((x[5]+x[6])/2), sd = abs(x[10]))),2)
+female_h = round(sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs((x[5]+x[6]+x[7]+x[8])/2),
+                                                               sd = sqrt(abs(x[10])))),2)
+CZ_cline_mountYN_h = matrix(nrow = nrow(female_h), ncol = nrow(male_h))
+CZ_clines_YN_h = list()
+for (i in 1:ncol(female_h)){
+  for (j in 1:nrow(female_h)) {
+    CZ_cline_mountYN_h[j,] = rbinom(n = nrow(female_h), size = 1,
+                                    prob = inv.logit(CZ_size_params$mean[CZ_size_params$params=='level'] +
+                                                       CZ_size_params$mean[CZ_size_params$params=='scale'] *
+                                                       exp(-0.5 * (((female_h[j,i] - male_h[,i]) -
+                                                                      CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                                                                     CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+                                                       CZ_size_params$mean[CZ_size_params$params=='asymmetry'] *
+                                                       (female_h[j,i] - male_h[,i])))
+    
+  }
+  CZ_clines_YN_h[[i]] = CZ_cline_mountYN_h
+  names(CZ_clines_YN_h)[i] = colnames(female_h)[i]
+}
+
+# random sample of 1 successful male per female (variation in mounting success only in males)
+CZ_clines_Yidx_h = lapply(CZ_clines_YN_h, function(x) which(x==1, arr.ind = TRUE)) %>%
+  lapply(., function(x) as.data.frame(x[order(x[,'row']), ])) %>%
+  map(., function(x) group_by(x, row)) %>% map(., function(x) sample_n(x, size = 1))
+lapply(CZ_clines_Yidx_h, function(x) nrow(x))
+
+#CZ_clines_Yidx_h = lapply(CZ_clines_Yidx_h, function(x) ungroup(x)) %>%
+#  lapply(., function(x) sample_n(x, size = 9999))
+
+
+lapply(CZ_clines_Yidx_h, function(x) head(x))
+
+
+
+
+# retrieve sizes (ln) of the sampled males from the generated male size distribution
+CZ_clines_Y_mh_size = lapply(names(CZ_clines_Yidx_h), function(x) male_h[CZ_clines_Yidx_h[[x]][['col']], x])
+names(CZ_clines_Y_mh_size) = names(CZ_clines_Yidx_h)
+lapply(CZ_clines_Y_mh_size, function(x) head(x))
+lapply(CZ_clines_Y_mh_size, function(x) length(x))
+
+
+
+# density plot of the size of successful males
+CZ_fill = rainbow(4)
+names(CZ_fill) = names(CZ_clines_Y_mh_size)
+map(names(CZ_clines_Y_mh_size), function(x) {
+  ggplot() +
+    geom_density(aes(CZ_clines_Y_mh_size[[x]], fill=x)) +
+    scale_fill_manual(name = '', values = CZ_fill[x])
+})
+
+
+# compute predicted probabilities using the Gaussian formula between simulated mated pairs
+#head(female_h)
+#sample_n(as.data.frame(female_h), size = 1)
+#apply(female_h, 2, sample_n(size = 1))
+
+CZ_clines_Y_mfh_preds = lapply(names(CZ_clines_Y_mh_size), function(x) {
+  CZ_size_params$mean[CZ_size_params$params=='level'] + CZ_size_params$mean[CZ_size_params$params=='scale'] *
+    exp(-0.5 * (((female_h[, x] - CZ_clines_Y_mh_size[[x]]) - CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                  CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+    CZ_size_params$mean[CZ_size_params$params=='asymmetry'] * (female_h[, x] - CZ_clines_Y_mh_size[[x]])
+} %>% inv.logit)
+names(CZ_clines_Y_mfh_preds) = names(CZ_clines_Yidx_h)
+
+# scatter plot and fitted polynomial linear model of successful male sizes against predicted probabilities
+mh_fit_plot = map(names(CZ_clines_Y_mh_size), function(x) {
+  ggplot() +
+    geom_point(aes(x = CZ_clines_Y_mh_size[[x]], y = CZ_clines_Y_mfh_preds[[x]], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    geom_smooth(aes(x = CZ_clines_Y_mh_size[[x]], y = CZ_clines_Y_mfh_preds[[x]]), method="lm",
+                formula=y~poly(x,2)) +
+    labs(x = "succ. male size (ln)", y = "predicted probability", title = paste0(x, " hybrid")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_Y_mh_size[[x]]),0.5)) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_sexsel_mh_fitplot.pdf")
+do.call(ggarrange, mh_fit_plot)
+dev.off()
+
+# proportion of mountings for each sampled successful male paired with all the females
+CZ_clines_fmh_YN = lapply(names(CZ_clines_Yidx_h), function(x) CZ_clines_YN_h[[x]][, CZ_clines_Yidx_h[[x]][['col']]])
+names(CZ_clines_fmh_YN) = names(CZ_clines_Yidx_h)
+CZ_clines_fmh_mean = lapply(CZ_clines_fmh_YN, function(x) apply(x, 2, mean))
+lapply(CZ_clines_fmh_mean, function(x) head(x))
+CZ_clines_Y_mh_size2 = lapply(names(CZ_clines_fmh_YN), function(x) male_h[CZ_clines_Yidx_h[[x]][['col']], x])
+names(CZ_clines_Y_mh_size2) = names(CZ_clines_fmh_YN)
+identical(CZ_clines_Y_mh_size2$CZD, CZ_clines_Y_mh_size$CZD)
+CZ_clines_mh_ss = lapply(1:4, function(x) cbind(male_size=CZ_clines_Y_mh_size2[[x]],
+                                                probs = round(CZ_clines_fmh_mean[[x]], 2))) %>%
+  map(., function(x) as.data.frame(x))
+names(CZ_clines_mh_ss) = names(CZ_clines_Yidx_h)
+
+mh_mean_plot = map(names(CZ_clines_mh_ss), function(x) {
+  ggplot() +
+    geom_point(aes(x = CZ_clines_mh_ss[[x]][,'male_size'], y = CZ_clines_mh_ss[[x]][,'probs'], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    geom_smooth(aes(x = CZ_clines_mh_ss[[x]][,'male_size'], y = CZ_clines_mh_ss[[x]][,'probs']),
+                method="lm", formula=y~poly(x,2)) +
+    labs(x = "succ. male size (ln)", y = "mean predicted probability", title = paste0(x, " hybrid")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_mh_ss[[x]]),0.5)) +
+    ylim(0, max(CZ_clines_mh_ss[[x]][,'probs'])) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_ss_mh_fitmean.pdf")
+do.call(ggarrange, mh_mean_plot)
+dev.off()
+
+# plot binned sizes of successful males against predicted probabilities
+lapply(CZ_clines_Y_mh_size, function(x) range(x))
+lapply(CZ_clines_Y_mh_size, function(x) head(x))
+mh_breaks = c(seq(0.4,3,0.1), 3.5)
+mh_bin = lapply(CZ_clines_Y_mh_size, function(x) cut(x, mh_breaks))
+CZ_clines_h_sexsel= lapply(1:4, function(x) cbind(male_size=CZ_clines_Y_mh_size[[x]],
+                                                  probs = round(CZ_clines_Y_mfh_preds[[x]], 2),
+                                                  bin = mh_bin[[x]])) %>% map(., function(x) as.data.frame(x)) %>%
+  map(., function(x) group_by(x, bin)) %>%
+  purrr::map(., function(df) {summarize_all(df, funs(mean,min,max))})
+names(CZ_clines_h_sexsel) = names(CZ_clines_Yidx_h)
+
+mh_bin_plot = map(names(CZ_clines_h_sexsel), function(x) {
+  ggplot() +
+    geom_smooth(aes(x = CZ_clines_h_sexsel[[x]][,'male_size_mean'], y = CZ_clines_h_sexsel[[x]][,'probs_mean']),
+                method="lm", formula=y~poly(x,2)) +
+    geom_point(aes(x = CZ_clines_h_sexsel[[x]][,'male_size_mean'], y = CZ_clines_h_sexsel[[x]][,'probs_mean'], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    labs(x = "mean succ. male size (ln)", y = "mean predicted probability", title = paste0(x, " hybrid")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_Y_mh_size[[x]]),0.5)) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_sexsel_mh_fitbin2.pdf")
+do.call(ggarrange, mh_bin_plot)
+dev.off()
+
+map(names(CZ_clines_h_sexsel), function(x) {
+  ggplot() +
+    geom_density(aes(x = CZ_clines_h_sexsel[[x]][,'male_size_mean'], y = CZ_clines_h_sexsel[[x]][,'probs_mean'], fill=x),
+                 stat = 'identity') +
+    scale_fill_manual(name = '', values = CZ_fill[x])
+})
+
+
+#################
+## wave habitat
+#################
+CZ_cline_mountYN_w = matrix(nrow = nrow(female_w), ncol = nrow(male_w))
+CZ_clines_YN_w = list()
+for (i in 1:ncol(female_w)){
+  for (j in 1:nrow(female_w)) {
+    CZ_cline_mountYN_w[j,] = rbinom(n = nrow(female_w), size = 1,
+                                    prob = inv.logit(CZ_size_params$mean[CZ_size_params$params=='level'] +
+                                                       CZ_size_params$mean[CZ_size_params$params=='scale'] *
+                                                       exp(-0.5 * (((female_w[j,i] - male_w[,i]) -
+                                                                      CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                                                                     CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+                                                       CZ_size_params$mean[CZ_size_params$params=='asymmetry'] *
+                                                       (female_w[j,i] - male_w[,i])))
+    
+  }
+  CZ_clines_YN_w[[i]] = CZ_cline_mountYN_w
+  names(CZ_clines_YN_w)[i] = colnames(female_w)[i]
+}
+
+# random sample of 1 successful male per female (variation in mounting success only in males)
+CZ_clines_Yidx_w = lapply(CZ_clines_YN_w, function(x) which(x==1, arr.ind = TRUE)) %>%
+  lapply(., function(x) as.data.frame(x[order(x[,'row']), ])) %>%
+  map(., function(x) group_by(x, row)) %>% map(., function(x) sample_n(x, size = 1))
+lapply(CZ_clines_Yidx_w, function(x) head(x))
+
+
+# retrieve sizes (ln) of the sampled males from the generated male size distribution
+CZ_clines_Y_mw_size = lapply(names(CZ_clines_Yidx_w), function(x) male_w[CZ_clines_Yidx_w[[x]][['col']], x])
+names(CZ_clines_Y_mw_size) = names(CZ_clines_Yidx_w)
+lapply(CZ_clines_Y_mw_size, function(x) head(x))
+
+
+
+# density plot of the size of successful males
+CZ_fill = rainbow(4)
+names(CZ_fill) = names(CZ_clines_Y_mw_size)
+map(names(CZ_clines_Y_mw_size), function(x) {
+  ggplot() +
+    geom_density(aes(CZ_clines_Y_mw_size[[x]], fill=x)) +
+    scale_fill_manual(name = '', values = CZ_fill[x])
+})
+
+# compute predicted probabilities using the Gaussian formula between simulated mated pairs
+CZ_clines_Y_mfw_preds = lapply(names(CZ_clines_Y_mw_size), function(x) {
+  CZ_size_params$mean[CZ_size_params$params=='level'] + CZ_size_params$mean[CZ_size_params$params=='scale'] *
+    exp(-0.5 * (((female_w[,x] - CZ_clines_Y_mw_size[[x]]) - CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                  CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+    CZ_size_params$mean[CZ_size_params$params=='asymmetry'] * (female_w[,x] - CZ_clines_Y_mw_size[[x]])
+} %>% inv.logit)
+names(CZ_clines_Y_mfw_preds) = names(CZ_clines_Yidx_w)
+
+# scatter plot and fitted polynomial linear model of successful male sizes against predicted probabilities
+mw_fit_plot = map(names(CZ_clines_Y_mw_size), function(x) {
+  ggplot() +
+    geom_point(aes(x = CZ_clines_Y_mw_size[[x]], y = CZ_clines_Y_mfw_preds[[x]], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    geom_smooth(aes(x = CZ_clines_Y_mw_size[[x]], y = CZ_clines_Y_mfw_preds[[x]]), method="lm",
+                formula=y~poly(x,2)) +
+    labs(x = "succ. male size (ln)", y = "predicted probability", title = paste0(x, " wave")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_Y_mw_size[[x]]),0.5)) +
+    #xlim(0.5, max(CZ_clines_Y_mw_size[[x]])) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_sexsel_mw_fitplot.pdf")
+do.call(ggarrange, mw_fit_plot)
+dev.off()
+
+
+# proportion of mountings for each sampled successful male paired with all the females
+CZ_clines_fmw_YN = lapply(names(CZ_clines_Yidx_w), function(x) CZ_clines_YN_w[[x]][, CZ_clines_Yidx_w[[x]][['col']]])
+names(CZ_clines_fmw_YN) = names(CZ_clines_Yidx_w)
+CZ_clines_fmw_mean = lapply(CZ_clines_fmw_YN, function(x) apply(x, 2, mean))
+lapply(CZ_clines_fmw_mean, function(x) head(x))
+CZ_clines_Y_mw_size2 = lapply(names(CZ_clines_fmw_YN), function(x) male_w[CZ_clines_Yidx_w[[x]][['col']], x])
+names(CZ_clines_Y_mw_size2) = names(CZ_clines_fmw_YN)
+identical(CZ_clines_Y_mw_size2$CZD, CZ_clines_Y_mw_size$CZD)
+CZ_clines_mw_ss = lapply(1:4, function(x) cbind(male_size=CZ_clines_Y_mw_size2[[x]],
+                                                probs = round(CZ_clines_fmw_mean[[x]], 2))) %>%
+  map(., function(x) as.data.frame(x))
+names(CZ_clines_mw_ss) = names(CZ_clines_Yidx_w)
+
+mw_mean_plot = map(names(CZ_clines_mw_ss), function(x) {
+  ggplot() +
+    geom_point(aes(x = CZ_clines_mw_ss[[x]][,'male_size'], y = CZ_clines_mw_ss[[x]][,'probs'], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    geom_smooth(aes(x = CZ_clines_mw_ss[[x]][,'male_size'], y = CZ_clines_mw_ss[[x]][,'probs']),
+                method="lm", formula=y~poly(x,2)) +
+    labs(x = "succ. male size (ln)", y = "mean predicted probability", title = paste0(x, " wave")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_mw_ss[[x]]),0.5)) +
+    ylim(0, max(CZ_clines_mw_ss[[x]][,'probs'])) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_ss_mw_fitmean.pdf")
+do.call(ggarrange, mw_mean_plot)
+dev.off()
+
+
+
+# plot binned sizes of successful males against predicted probabilities
+lapply(CZ_clines_Y_mw_size, function(x) head(x))
+lapply(CZ_clines_Y_mw_size, function(x) range(x))
+mw_breaks = c(0.1, seq(0.5,2.5,0.1), 3)
+mw_bin = lapply(CZ_clines_Y_mw_size, function(x) cut(x, mw_breaks))
+CZ_clines_w_sexsel= lapply(1:4, function(x) cbind(male_size=CZ_clines_Y_mw_size[[x]],
+                                                  probs = round(CZ_clines_Y_mfw_preds[[x]], 2),
+                                                  bin = mw_bin[[x]])) %>% map(., function(x) as.data.frame(x)) %>%
+  map(., function(x) group_by(x, bin)) %>%
+  purrr::map(., function(df) {summarize_all(df, funs(mean,min,max))})
+names(CZ_clines_w_sexsel) = names(CZ_clines_Yidx_w)
+
+mw_bin_plot = map(names(CZ_clines_w_sexsel), function(x) {
+  ggplot() +
+    geom_smooth(aes(x = CZ_clines_w_sexsel[[x]][,'male_size_mean'], y = CZ_clines_w_sexsel[[x]][,'probs_mean']),
+                method="lm", formula=y~poly(x,2)) +
+    geom_point(aes(x = CZ_clines_w_sexsel[[x]][,'male_size_mean'], y = CZ_clines_w_sexsel[[x]][,'probs_mean'], col=x)) +
+    scale_color_manual(name = '', values = CZ_fill[x]) +
+    labs(x = "mean succ. male size (ln)", y = "mean predicted probability", title = paste0(x, " wave")) +
+    scale_x_continuous(breaks = seq(0.5,max(CZ_clines_Y_mw_size[[x]]),0.5)) +
+      #xlim(0.5, max(CZ_clines_Y_mw_size[[x]])) +
+    rremove("legend")
+})
+pdf("figures/gaus_size_sexsel_mw_fitbin.pdf")
+do.call(ggarrange, mw_bin_plot)
+dev.off()
+
+mw_bin_dens = map(names(CZ_clines_w_sexsel), function(x) {
+  ggplot() +
+    geom_density(aes(x = CZ_clines_w_sexsel[[x]][,'male_size_mean'], y = CZ_clines_w_sexsel[[x]][,'probs_mean'], fill=x),
+                 stat = 'identity') +
+    scale_fill_manual(name = '', values = CZ_fill[x]) +
+    labs(x = "succ. male size (ln)", y = "predicted probability")
+})
+do.call(ggarrange, mw_bin_dens)
+
+
+
 ####################################
-# simulate wild size distributions #
 ####################################
 CZ_cline_params[CZ_cline_params$params=='crab','CZA']
 
 #CZ_cline_params = CZ_cline_params %>% remove_rownames %>% column_to_rownames(var='params')
 
-male_c = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[5]), sd = sqrt(abs(x[9]))))
-apply(male_c, 2, hist)
-female_c = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[5]+x[7]), sd = sqrt(abs(x[9]))))
-apply(female_c, 2, hist)
-male_w = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]), sd = sqrt(abs(x[10]))))
-apply(male_w, 2, hist)
-female_w = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]+x[8]), sd = sqrt(abs(x[10]))))
-apply(female_w, 2, hist)
-#male_h = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]), sd = sqrt(abs(x[10]))))
-#apply(male_w, 2, hist)
-#female_h = sapply(CZ_cline_params[-1], function(x) rnorm(n = 10000, mean = abs(x[6]+x[8]), sd = sqrt(abs(x[10]))))
-#apply(female_w, 2, hist)
+mapply(cbind, CZ_clines_Y_mc_size, "SampleID"=names(CZ_clines_Y_mc_size), SIMPLIFY=F)
+
+male_c = as.data.frame(male_c)
+lapply(names(CZ_clines_Y_c_rnd), function(x) male_c[CZ_clines_Y_c_rnd[[x]][,'col'], x])
+names(CZ_clines_Y_mc) = names(CZ_clines_Y_c_uni)
+
+test = lapply(CZ_clines_Y_c_ord, function(x) head(x))
+lapply(CZ_clines_Y_c_ord, function(x) tail(x))
+test = lapply(test, function(x) as.data.frame(x))
+test$CZA$row[2] = 3
+test$CZB$row[3] = 4
+test$CZC$row[5] = 2
+
+test %>% map(., function(x) group_by(x, row)) %>% map(., function(x) sample_n(x, size = 1))
+
+lapply(test, function(x) x[c(T, diff(x[,'col'])>1), ])
+
+CZ_clines_Y_mc_uni = lapply(CZ_clines_Y_c_ord, function(x) sample(x[,'col'], size = 100, replace = FALSE))
+lapply(CZ_clines_Y_mc_uni, function(x) head(x,20))
+CZ_clines_Y_mc = lapply(names(CZ_clines_Y_mc_uni), function(x) male_c[CZ_clines_Y_mc_uni[[x]],x])
+lapply(CZ_clines_Y_mc, function(x) head(x,20))
+
+CZ_clines_Y_c_uni = lapply(CZ_clines_Y_c_ord, function(x) x[c(T, diff(x[,'row'])>0), ])
+lapply(CZ_clines_Y_c_uni, function(x) head(x,20))
+lapply(CZ_clines_Y_c_uni, function(x) unique(x[,'col']))
+lapply(CZ_clines_Y_c_uni, function(x) tail(x))
+
+CZ_clines_Y_mc = lapply(names(CZ_clines_Y_c_uni), function(x) male_c[CZ_clines_Y_c_uni[[x]][,'col'],x])
+names(CZ_clines_Y_mc) = names(CZ_clines_Y_c_uni)
+lapply(CZ_clines_Y_mc, function(x) head(x))
+head(male_c)
+dim(CZ_clines_YN_c)
+names(CZ_clines_YN_c)
+CZ_clines_Y_c_uni$CZA[,'col']
+lapply(names(CZ_clines_YN_c), function(x) mean(CZ_clines_YN_c[[x]][,CZ_clines_Y_c_uni[[x]][,'col']]))
+
+fem_h = head(as.data.frame(female_h))
+fem_h = head(female_h)
+fem_h = data.frame(CZA=c(1,12,2), CZB=c(10,15,16))
+fem_h = as.matrix(fem_h)
+fem_h = t(fem_h)
+head(as.data.frame(male_h))
+mal_h = head(male_h)
+mal_h = data.frame(CZA=c(20,31,2), CZB=c(50,55,3))
+mal_h = as.matrix(mal_h)
+
+mf_mx = matrix(nrow = 3, ncol = 3)
+mf_ls = list()
+for (i in 1:ncol(fem_h)){
+  for (j in 1:nrow(fem_h)) {
+    mf_mx[j,] = rbinom(n = 3, 1, prob = inv.logit(fem_h[j,i] - mal_h[,i]))
+  }
+  
+  mf_ls[[i]] = mf_mx
+  names(mf_ls)[i] = names(fem_h)[i]
+}
+mf_ls
+mf_ls$CZA[1,2] = 1
+mf_ls$CZB[2,3] = 1
+mf_win = lapply(mf_ls, function(x) which(x==1, arr.ind = TRUE))
+
+
+mf_win$CZB[order(mf_win$CZB[,'row']),]
+mf_win$CZA[c(T, diff(mf_win$CZA[,'row'])>0), ]
+
+mf_win_ord = lapply(mf_win, function(x) x[order(x[,'row']), ])
+mf_win_uni = lapply(mf_win_ord, function(x) x[c(T, diff(x[,'row'])>0), ])
+
+mal_h[mf_win$CZA[,'col'], 'CZA']
+names(mf_win)
+lapply(names(mf_win), function(x) mal_h[mf_win[[x]][,'col'],x])
+mf_yn = rbinom(n = length(mf_ratio), size = 1,
+               prob = inv.logit(CZ_size_params$mean[CZ_size_params$params=='level'] +
+                                  CZ_size_params$mean[CZ_size_params$params=='scale'] *
+                                  exp(-0.5 * (((mf_ratio) -CZ_size_params$mean[CZ_size_params$params=='preference'])/
+                                                CZ_size_params$mean[CZ_size_params$params=='choosiness'])^2) +
+                                  CZ_size_params$mean[CZ_size_params$params=='asymmetry'] * (mf_ratio)))
+mf_ratio[which(mf_yn==1)]
+
+foo1 = lapply(CZ_clines_Yidx_w, function(x) head(x))
+foo2 = lapply(names(foo1), function(x) CZ_clines_YN_w[[x]][, foo1[[x]][['col']]])
+names(foo2) = names(CZ_clines_Yidx_w)
+lapply(foo2, function(x) head(x))
+lapply(foo2, function(x) apply(x, 2, mean))
+lapply(names(foo2), function(x) male_w[foo1[[x]][['col']], x])
+
+foo2 = CZ_clines_YN_w$CZA[, foo1$col]
+head(foo2)
+identical(CZ_clines_YN_w$CZA[, foo1$col][,6], CZ_clines_YN_w$CZA[,6697])
+apply(foo2, 2, mean)
+head(male_w)
+male_w[, 'CZA'][foo1$col]
+male_w[, 'CZA'][6697]
+
+mean(CZ_clines_YN_w$CZD[,8597])
+
+foo = lapply(names(CZ_clines_Yidx_w), function(x) CZ_clines_YN_w[[x]][CZ_clines_Yidx_w[[x]][['col']], ])
+names(foo) = names(CZ_clines_Yidx_w)
+
+sapply(test_ls, function(x) which(x==1))
+mal_h[36]
+
+hyb = list(female = head(as.data.frame(female_h)), male = head(as.data.frame(male_h)))
+summary(hyb)
+sapply(fem_h, function(x) x +1)
+
+hyb_fun = function(sex_data, shore, i) {
+  list_eco = lapply(sex_data[, shore], function(x) {
+    sex_data[, shore] + mal_h[, shore]
+  })
+}
+lapply(names(hyb), function(x) hyb_fun(hyb[[x]], "CZA", x))
+
+hyb = data.frame(log_female=head(as.data.frame(female_h)), log_male=head(as.data.frame(male_h)), ref_ecotype="hyb")
 
 eco_list = list(crab=NULL, hyb=NULL, wave=NULL)
+colnames(eco_list) = "foo"
 
 crab <- data.frame(log_male=rnorm(10000,mean = 2.4,
                                   sd = sqrt(0.2)),
@@ -435,9 +993,7 @@ CZ_cline <- merge(CZ_cline,hyb,all=TRUE)
 
 eco_list = list(wave=head(wave),hyb=head(hyb),crab=head(crab))
 
-###################################
-# apply size model to field distr #
-###################################
+
 #devtools::install_github("rmcelreath/rethinking",force = TRUE)
 #library(rethinking)
 

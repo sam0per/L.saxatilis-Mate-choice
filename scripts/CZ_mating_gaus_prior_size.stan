@@ -23,16 +23,9 @@ model {
   preference ~ normal(0, 10);
   asymmetry ~ normal(0, 10);
   
-  y ~ bernoulli_logit(y_hat);
+  if (!posterior_predictive) {
+    y ~ bernoulli_logit(y_hat);
+  }
 }
 
-generated quantities {
-  vector[N] y_rep;
-  vector[N] log_lik;
-  for (n in 1:N) {
-    y_rep[n] = bernoulli_logit_rng(level + scale * exp(-0.5*((ratio[n]-preference)/choosiness)^2) + asymmetry * ratio[n]);
-  }
-  for (n in 1:N) {
-    log_lik[n] = bernoulli_logit_lpmf(y[n] | level + scale * exp(-0.5*((ratio[n]-preference)/choosiness)^2) + asymmetry * ratio[n]);
-    }
-}
+

@@ -24,13 +24,9 @@ rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 ```
 
-## Abstract
+## Results
 
-$\vspace{1cm}$
 
-...
-
-Here we describe the impact of the mating patterns on the evolution of reproductive barriers between two ecotypes of _Littorina saxatilis_. Firstly, we determine the relationship between the probability of mounting and the shell sizes of the mating pairs and demonstrate that this relationship is constant across shores and between ecotypes. The statistical model is built from a Bernoulli distribution in a Bayesian framework because it allows us to estimate unknown mating parameters (e.g., preference and choosiness) given the data and a set of prior distributions. Secondly, we explore the genetic basis of mate choice using computer simulations for a preference/trait rule and a matching rule.
 
 $\vspace{0.5cm}$
 
