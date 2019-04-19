@@ -1,0 +1,87 @@
+---
+title: "Size cline analysis"
+author: "Samuel Perini"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(bbmle)
+library(magrittr)
+library(dplyr)
+library(pander)
+```
+
+
+```{r cline function 2 centres 3 sd, message=FALSE}
+CZ_all = read.csv("../../data/CZ_all_mating_clean.csv", sep = ";")
+
+cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,lsc,lsh,lsw){
+  wl = exp(lwl)
+  wr = exp(lwr)
+  sc = exp(lsc)
+  sh = exp(lsh)
+  sw = exp(lsw)
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
+  
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+  s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
+  
+  # combined cline
+  z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  return(minusll)
+}
+
+p = "CZB"
+theta.init = list(cl=70,cr=125,lwl=1.6,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,lsc=-1.6,lsh=-0.7,lsw=-1.6)
+mle.cline.2c3s = mle2(cline_2c3s, theta.init,
+                      control=list(parscale=abs(unlist(theta.init))),
+                      data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+                                position=CZ_all$DistAlongPath[CZ_all$shore==p],
+                                sex=CZ_all$sex[CZ_all$shore==p]))
+
+(cline_sum = summary(mle.cline.2c3s))
+AIC(mle.cline.2c3s)
+```
+
+**Note**:
+
+* I have tried to change the left cline as increasing and the right cline as decreasing but I have not succeded. Perhaps I can have a look at your cline script and change mine accordingly.
+
+* _zs\_c_ and _zs\_w_ are not properly estimated because their values are the same as the intial values. Can you see anything I can change to improve the fitting? 
+
+\
+
+Back-transformation of the cline paramters:
+```{r transpars}
+cline_params = coef(cline_sum)[,1]
+cline_params[(5:8)] = abs(cline_params[(5:8)])
+cline_params[(-1:-2)] = exp(cline_params[(-1:-2)])
+names(cline_params) = c("cl","cr","wl","wr","crab_mm","wave_mm","zs_c_mm","zs_w_mm","sc","sh","sw")
+p_xl = 0.5
+cline_params['sh'] = sqrt(cline_params['sc']^2 + 4*p_xl*(1-p_xl)*cline_params['sh']^2 + (p_xl^2)*(cline_params['sw']^2-cline_params['sc']^2))
+pander::pander(x = cline_params %>% round(2))
+```
+
+
+```{r fig size vs distance, fig.pos='h', echo=FALSE}
+par(mar = c(4, 4, 0.5, 0.5))
+plot(CZ_all$DistAlongPath[CZ_all$shore==p], CZ_all$length_mm[CZ_all$shore==p], pch=19,
+     xlab = "Distance (m)", ylab = "Size", main = "CZB")
+abline(v = c(cline_params['cl'], cline_params['cr']), col=c('blue', 'blue'))
+```
+

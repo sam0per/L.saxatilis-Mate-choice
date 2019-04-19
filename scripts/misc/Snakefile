@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+workdir: "/home/samuel/L.saxatilis/L.saxatilis-Mate-choice"
+
+
+rule all:
+	input:
+		"figures/CZ_crab_sim_size_ss.png"
+		
+		
+rule stan:
+	input:
+		"tables/CZ_cline_params.csv"
+	output:
+		"figures/CZ_crab_sim_size_ss.png"
+	threads: 5
+	shell:
+		"/usr/bin/Rscript scripts/HUL_mating_gaus.R {input} {output}"
+		
