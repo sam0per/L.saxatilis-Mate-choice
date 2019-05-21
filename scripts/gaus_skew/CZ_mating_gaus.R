@@ -324,9 +324,9 @@ CZ <- merge(CZ,CZD,all = TRUE)
 CZall = CZ[!is.na(CZ$Shape) & CZ$log_female>0.5,]
 write.table(CZall, "data/CZ_all_mating_clean.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 
-CZ_all = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
-#CZ_data = read.csv("tables/CZ_size_mating.csv", sep = ";")
-#identical(sort(CZ_all$size_ratio), sort(CZ_data$size_ratio))
+CZ_all = read.csv("data/CZ_all_mating_clean.csv", sep = ",")
+# CZ_data = read.csv("tables/CZ_size_mating.csv", sep = ";")
+# identical(sort(CZ_all$size_ratio), sort(CZ_data$size_ratio))
 CZ_all %>%
   group_by(snail_ID, ref_ecotype) %>%
   dplyr::summarise(count=n()) %>%
@@ -336,12 +336,12 @@ CZ_all %>%
 
 
 
-cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,lsc,lsh,lsw){
+cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,sh,sw){
   wl = exp(lwl)
   wr = exp(lwr)
-  sc = exp(lsc)
-  sh = exp(lsh)
-  sw = exp(lsw)
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
   # left cline
   p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
@@ -413,58 +413,80 @@ mle.cline.2c3s = list(CZA=NULL, CZB=NULL, CZC=NULL, CZD=NULL)
 
 for (p in levels(CZ_all$shore)) {
   if (p=='CZA'){
-    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=170,cr=280,lwl=3,lwr=2.3,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,lsc=-1.6,lsh=-2.3,lsw=-1.6)
+    theta.init = list(cl=130,cr=280,lwl=3,lwr=2.3,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
     mle.cline.2c3s$CZA = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
-                                        sex=CZ_all$sex[CZ_all$shore==p]))
+                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
+                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
   }
   else if (p=='CZB'){
-    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=70,cr=125,lwl=1.6,lwr=3.9,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,lsc=-1.6,lsh=-1,lsw=-1.6)
+    theta.init = list(cl=70,cr=150,lwl=1.6,lwr=3.9,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
     mle.cline.2c3s$CZB = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
-                                        sex=CZ_all$sex[CZ_all$shore==p]))
+                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
+                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
   }
   else if (p=='CZC'){
-    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=50,cr=125,lwl=2.3,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,lsc=-1.6,lsh=-1,lsw=-1.6)
+    theta.init = list(cl=50,cr=125,lwl=1.5,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
     mle.cline.2c3s$CZC = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
-                                        sex=CZ_all$sex[CZ_all$shore==p]))
+                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
+                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
   }
   else {
-    plot(CZ_all$DistAlongPath[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
     title(main = p)
-    theta.init = list(cl=80,cr=165,lwl=1.6,lwr=2.3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,lsc=-1.6,lsh=-2.5,lsw=-1.6)
+    theta.init = list(cl=80,cr=175,lwl=1.6,lwr=1.6,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
     mle.cline.2c3s$CZD = mle2(cline_2c3s, theta.init,
                               control=list(parscale=abs(unlist(theta.init))),
                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$DistAlongPath[CZ_all$shore==p],
-                                        sex=CZ_all$sex[CZ_all$shore==p]))
+                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
+                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
   }
 }
 
 lapply(mle.cline.2c3s, summary)
 
-ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZA)@coef, 2)))
-ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZB)@coef, 2)))
-ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZC)@coef, 2)))
-ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZD)@coef, 2)))
+# ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZA)@coef, 2)))
+# ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZB)@coef, 2)))
+# ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZC)@coef, 2)))
+# ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZD)@coef, 2)))
 
 (CZ_cline_params = sapply(mle.cline.2c3s, function(x) round(coef(x), 2)))
-s_centre = function(sc, sh, sw) {sqrt(sc^2 + sh^2 + 0.25*(sw^2-sc^2))}
-s_centre(sc = exp(CZ_cline_params["lsc", "CZA"]), sh = exp(CZ_cline_params["lsh", "CZA"]),
-         sw = exp(CZ_cline_params["lsw", "CZA"]))
+(CZ_cline_params = abs(CZ_cline_params))
+
+s_centre = function(sc, sh, sw) {
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
+  sqrt(sc^2 + sh^2 + 0.25*(sw^2-sc^2))
+}
+s_pars = sapply(c("CZA", "CZB", "CZC", "CZD"), function(x) {
+  sh = s_centre(sc = CZ_cline_params["sc", x], sh = CZ_cline_params["sh", x], sw = CZ_cline_params["sw", x])
+  # sc = exp(CZ_cline_params["lsc", x])
+  # sw = exp(CZ_cline_params["lsw", x])
+  sc = CZ_cline_params["sc", x]
+  sw = CZ_cline_params["sw", x]
+  return(round(rbind(sc, sh, sw), 2))
+})
+
+cline_pars = row.names(CZ_cline_params)
+CZ_cline_params = rbind(CZ_cline_params[1:nrow(CZ_cline_params[c(-1:-3), ]), ], s_pars)
+row.names(CZ_cline_params) = cline_pars
+write.table(CZ_cline_params, "tables/clines/CZ_cline_params.csv", row.names = TRUE, col.names = TRUE, sep = ",")
+
+# s_centre = function(sc, sh, sw) {sqrt(sc^2 + sh^2 + 0.25*(sw^2-sc^2))}
+# s_centre(sc = exp(CZ_cline_params["lsc", "CZA"]), sh = exp(CZ_cline_params["lsh", "CZA"]),
+#          sw = exp(CZ_cline_params["lsw", "CZA"]))
 
 CZ_cline_params = rownames_to_column(as.data.frame(CZ_cline_params), var="params")
 CZ_cline_params[(5:8),-1] = abs(CZ_cline_params[(5:8),-1])
