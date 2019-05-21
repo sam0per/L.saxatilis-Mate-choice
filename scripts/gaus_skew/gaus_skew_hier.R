@@ -1,8 +1,6 @@
 rm(list = ls())
 
-.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
-              "bbmle", "loo", "ggpubr", "cowplot", "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel",
-              "rstantools", "optparse", "VGAM")
+.packages = c("ggplot2", "dplyr", "rstan", "optparse")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -20,7 +18,9 @@ option_list = list(
   make_option(c("-i", "--iterations"), type = "integer", default = NULL,
               help = "number of MCMC iterations", metavar = "integer"),
   make_option(c("-c", "--chains"), type = "integer", default = 4,
-              help = "number of MCMC chains [default: %default]", metavar = "integer"))
+              help = "number of MCMC chains [default: %default]", metavar = "integer"),
+  make_option(c("-o", "--output"), type = "character", default = "output",
+              help = "prefix for output files [default: %default]", metavar = "character"))
 
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
@@ -32,6 +32,7 @@ if (is.null(opt$data) | is.null(opt$stanfile) | is.null(opt$iterations)) {
 
 
 CZ_data = read.csv(opt$data, sep = ";")
+pref_out = opt$output
 
 #########################################
 # stan hierarchical model with skewness #
@@ -43,8 +44,14 @@ options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
 # head(CZ_data$ref_eco_sex)
 # head(CZ_data$ref_ecotype)
 # head(CZ_data$test_sex)
-# CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_eco_sex + test_sex * shape, data = CZ_data)
-CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex:shape, data = CZ_data)
+
+CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
+dM_matrix = CZ_matrix[, -1]
+# CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
+# CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)
+
+
+# CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex:shape, data = CZ_data)
 # dim(CZ_matrix)
 
 # CZ_data$ref_ecotype=as.integer(CZ_data$ref_ecotype) # 1 for crab and 2 for wave
@@ -57,10 +64,12 @@ CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex:shape, 
 #            shore = CZ_data$shore, ref = CZ_data$ref_eco_sex, test = CZ_data$test_sex)
 
 dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
-           X = CZ_matrix, K = dim(CZ_matrix)[2])
+           X = CZ_matrix, K = dim(CZ_matrix)[2], M = dM_matrix)
 
 gaus_skew = rstan::stan(file = opt$stanfile, data = dat, iter = opt$iterations, warmup = opt$iterations/4,
                         chains=opt$chains, refresh=opt$iterations,
-                        control = list(adapt_delta = 0.90, max_treedepth = 15))
+                        control = list(adapt_delta = 0.95, max_treedepth = 15))
 
-saveRDS(gaus_skew, "models/gaus_skew/gaus_skew_hier_CDG.rds")
+saveRDS(gaus_skew, "models/gaus_skew/gaus_skew_hier_BCDG.rds")
+# saveRDS(gaus_skew, "models/gaus_skew/gaus_skew_hier_BCDG_shore_eco.rds")
+
