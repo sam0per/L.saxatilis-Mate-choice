@@ -15,7 +15,7 @@ rm(list = ls())
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
 
-# Load packages into session 
+# Load packages into session
 lapply(.packages, require, character.only=TRUE)
 
 #load("Rpackages")
@@ -72,7 +72,7 @@ lapply(shore, function(x) {
   ggplot(., aes(DistAlongPath, log(length_mm))) +
   facet_wrap(~ shore, scale = 'free') +
   geom_point()
-  
+
 
 
 #############################
@@ -255,7 +255,7 @@ write.table(CZ_data, "tables/gaus_size/gaus_size_mat.csv", row.names = FALSE, co
 
 ###################################
 # plot observs and preds for size #
-###################################                                                    
+###################################
 y = CZ_data$mountYNcontact
 y_rep = rstan::extract(CZ_mat_stan_size, pars = 'y_rep', permuted = TRUE)$y_rep
 dim(y_rep)
@@ -272,12 +272,12 @@ CZ_data$bin = cut(CZ_data$size_ratio,breaks)
 CZ_data_bin =
   CZ_data %>%
   group_by(bin) %>%
-  dplyr::summarise(mount = mean(mountYNcontact), 
-                   uci_mount = CI(mountYNcontact)['upper'], 
+  dplyr::summarise(mount = mean(mountYNcontact),
+                   uci_mount = CI(mountYNcontact)['upper'],
                    lci_mount = CI(mountYNcontact)['lower'],
                    mean_ratio = mean(size_ratio),
                    y_rep = mean(y_rep),
-                   preds_mount = mean(y_preds)) %>% 
+                   preds_mount = mean(y_preds)) %>%
   mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
 summary(CZ_data_bin)
 
@@ -333,7 +333,7 @@ CZ_all %>%
   filter(count > 2)
 
 
-  
+
 
 
 cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,lsc,lsh,lsw){
@@ -347,13 +347,13 @@ cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,lsc,l
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
   z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
   s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
-  
+
   # right cline
-  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
   z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
   z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
   s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
-  
+
   # combined cline
   z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
   s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
@@ -369,13 +369,13 @@ cline_2c2s <- function(phen,position,sex,cl,cr,wl,wr,crab,wave,zs_c,zs_w,sc,sw){
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
   z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
   s_xl <- sqrt(sc^2 + (p_xl)*(sw^2-sc^2))
-  
+
   # right cline
-  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
   z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
   z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
   s_x <- sqrt(sc^2 + (p_x)*(sw^2-sc^2))
-  
+
   # combined cline
   z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
   s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
@@ -385,6 +385,28 @@ cline_2c2s <- function(phen,position,sex,cl,cr,wl,wr,crab,wave,zs_c,zs_w,sc,sw){
   return(minusll)
 }
 
+cline_2c1s <- function(phen, position, sex, cl, cr, lwl, lwr, crab, wave, zs_c, zs_w, ls_x){
+  wl = exp(lwl)
+  wr = exp(lwr)
+  # s_x = exp(ls_x)
+  s_x = ls_x
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+
+  # combined cline
+  z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  return(minusll)
+}
 
 rm(theta.init ,mle.cline.2c3s, p)
 mle.cline.2c3s = list(CZA=NULL, CZB=NULL, CZC=NULL, CZD=NULL)
@@ -450,7 +472,7 @@ CZ_cline_params[(-1:-2),-1] = round(exp(CZ_cline_params[(-1:-2),-1]), 2)
 write.table(CZ_cline_params, "tables/clines/CZ_cline_params.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 
 CZ_cline_params[,1] = c("cl","cr","wl","wr","crab_mm","wave_mm","zs_c_mm","zs_w_mm","sc","sh","sw")
-# s_centre <- sqrt(sc^2 + sh^2 + 0.25*(sw^2-sc^2)) 
+# s_centre <- sqrt(sc^2 + sh^2 + 0.25*(sw^2-sc^2))
 round(sqrt(CZ_cline_params[9,-1]), 2)
 round(sqrt(CZ_cline_params[11,-1]), 2)
 CZ_cline_params[10,-1] = round(sapply(CZ_cline_params[-1], function(x) sqrt(x[9]^2 + 4*0.5*(1-0.5)*x[10]^2 +
@@ -629,8 +651,8 @@ for (eco in ecotype) {
     lapply(1:length(sim_ss_coef), function(x) ggsave(filename = paste0("tables/gaus_size/sex_sel/", shore[x], "_",
                                                                        eco, "_sim_size_ss_coef.png"),
                                                      plot = sim_ss_coef[[x]]))
-    
-    
+
+
     CZ_sim_min = sapply(CZ_sim_dat, function(x) min(x[['male']]))
     CZ_sim_max = sapply(CZ_sim_dat, function(x) max(x[['male']]))
     CZ_sim_brk = lapply(1:length(sim_dat), function(x) c(CZ_sim_min[x]-0.1,
@@ -647,8 +669,8 @@ for (eco in ecotype) {
         mutate(x, mountYN_lci = replace(mountYN_lci, which(mountYN_lci<0), 0),
                mountYN_uci = replace(mountYN_uci, which(mountYN_uci>1), 1))
       })
-    
-    
+
+
     CZ_sim_ss_plot = lapply(1:length(sim_dat), function(x) {
       ggplot() +
         geom_ribbon(data = sim_fit_ci[[x]],
@@ -805,7 +827,7 @@ rstan_options(auto_write = TRUE)
 #gaus_all = stan(file="scripts/min_gaus_all.stan", data=dat, iter = 6000, warmup = 1500, chains=4,
 #                refresh=6000, control = list(adapt_delta=0.90, max_treedepth = 15))
 #gaus_all = stan(file="scripts/min_gaus_all.stan", data=dat, iter = 6000, warmup = 2000, chains=2, refresh=6000)
-#gaus_all = stan(file="scripts/min_gaus_all.stan", data=dat, iter = 6000, warmup = 2000, chains=4, refresh=6000, 
+#gaus_all = stan(file="scripts/min_gaus_all.stan", data=dat, iter = 6000, warmup = 2000, chains=4, refresh=6000,
 #                control = list(adapt_delta = 0.90, max_treedepth = 15))
 
 gaus_all = stan(file="scripts/min_gaus_all.stan", data=dat, iter = 8000, warmup = 2000, chains=2, refresh=8000,
@@ -1051,13 +1073,13 @@ CZ_data$bin = cut(CZ_data$size_ratio,breaks)
 CZ_data_bin =
   CZ_data %>%
   group_by(bin, shore, ref_ecotype) %>%
-  dplyr::summarise(mount = mean(mountYN), 
-                   uci_mount = CI(mountYN)['upper'], 
+  dplyr::summarise(mount = mean(mountYN),
+                   uci_mount = CI(mountYN)['upper'],
                    lci_mount = CI(mountYN)['lower'],
                    mean_ratio = mean(size_ratio),
                    y_rep = mean(y_rep),
                    preds_mount = mean(y_preds),
-                   mean_pred = mean(preds)) %>% 
+                   mean_pred = mean(preds)) %>%
   mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0)) %>%
   mutate(uci_mount = replace(uci_mount, which(uci_mount>1), 1))
 head(CZ_data_bin)
@@ -1318,7 +1340,7 @@ lapply(seq_along(hier_hyp), function(x) {
     ggsave(filename = paste0("figures/gaus_skew/gaus_skew_hier_CDG_", coeff_list[[x]][y], "_dens.png"),
            plot = coeff_parfig[[x]][[y]])
   })
-}) 
+})
 ggsave(filename = paste0("figures/gaus_skew/gaus_skew_hier_CDG_b_dens.png"),
        plot = parfig)
 
@@ -1355,14 +1377,14 @@ lapply(seq_along(prx_hyp), function(x) {
 curve(dgamma(x, shape = 5, rate = 3), from = 0, to = 5)
 # curve(dnorm(x, mean = -0.1, sd = 0.1), from = -0.5, to = 0.5)
 # plot(dlnorm(1:100, meanlog = 0, sdlog = 0.5, log = FALSE))
-# 
+#
 # x = rlnorm(500,1,.6)
 # grid = seq(0,8,.01)
-# 
+#
 # plot(grid,dlnorm(grid,0,4),type="l",xlab="x",ylab="f(x)")
-# 
+#
 # plot(grid,dbeta(grid,shape1 = 6,shape2 = 10),type="l",xlab="x",ylab="f(x)")
-# 
+#
 # plot(grid,dgamma(grid,shape = 5,rate = 2),type="l",xlab="x",ylab="f(x)")
 
 grid = seq(0, 8, .01)
@@ -1413,9 +1435,9 @@ x = CZ_matrix[, -1]
 head(x)
 
 # prediction with the reference model
-predfun <- function(xt) t( b %*% t(xt) + a) 
-# initialize the reference model object. notice here that the first argument z 
-# denotes the features of the reference model, and x the features from which 
+predfun <- function(xt) t( b %*% t(xt) + a)
+# initialize the reference model object. notice here that the first argument z
+# denotes the features of the reference model, and x the features from which
 # we want to select from
 ref <- init_refmodel(x, y, gaussian(), predfun=predfun, dis=sigma)
 
