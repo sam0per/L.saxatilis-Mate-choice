@@ -40,8 +40,12 @@ pref_out = opt$output
 #########################################
 # stan hierarchical model with skewness #
 #########################################
-skew_hier@model_pars
-(hier_pars = skew_hier@model_pars[1:4])
+if ("d_intercept" %in% skew_hier@model_pars) {
+  hier_pars = skew_hier@model_pars[1:5]
+} else {
+  hier_pars = skew_hier@model_pars[1:4]
+}
+
 (hier_pars_tbl = round(summary(skew_hier, pars = hier_pars, probs=c(0.025, 0.975))$summary,2))
 
 if (length(row.names(hier_pars_tbl))==16) {
@@ -52,10 +56,11 @@ if (length(row.names(hier_pars_tbl))==16) {
 
 row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(hier_matrix))
 row.names(hier_pars_tbl)[grepl("c_coeff", row.names(hier_pars_tbl))] = paste0("c_", colnames(hier_matrix))
-row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(hier_matrix))
+row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(hier_matrix)[-1])
 row.names(hier_pars_tbl)[grepl("g_coeff", row.names(hier_pars_tbl))] = paste0("g_", colnames(hier_matrix))
 
 (hier_pars_df = rownames_to_column(as.data.frame(hier_pars_tbl), var="parameter"))
+hier_pars_df$parameter[grepl("ntercept", hier_pars_df$parameter)] = c("b_intercept", "c_intercept", "d_intercept", "g_intercept")
 
 write.table(hier_pars_df, paste0("tables/", pref_out, "_coef.csv"),
             row.names = FALSE, col.names = TRUE, sep = ",")
@@ -63,12 +68,14 @@ write.table(hier_pars_df, paste0("tables/", pref_out, "_coef.csv"),
 
 hier_draws = rstan::extract(skew_hier)
 
-hier_hyp = hier_pars
-hier_coeff = row.names(hier_pars_tbl)
+hier_hyp = hier_pars[grepl("coeff", hier_pars)]
+hier_coeff = hier_pars_df$parameter
 coeff_list = split(hier_coeff, ceiling(seq_along(hier_coeff)/length(colnames(hier_matrix))))
-names(coeff_list) = hier_pars
+# names(coeff_list) = hier_pars
+names(coeff_list) = hier_pars[grepl("coeff", hier_pars)]
+hier_draws$d_coeff = cbind(hier_draws$d_coeff, hier_draws$d_intercept)
 
-coeff_draws = lapply(seq_along(hier_hyp), function(x) {
+coeff_draws = lapply(hier_hyp, function(x) {
   hier_draws[[x]]
 })
 
@@ -96,9 +103,13 @@ lapply(seq_along(hier_hyp), function(x) {
 
 
 posterior = as.array(skew_hier)
-dim(posterior)
+# dim(posterior)
 dimnames(posterior)$parameters[1:length(row.names(hier_pars_tbl))] = hier_coeff
 
+# mcmc_intervals(posterior, pars = hier_coeff[grepl("b_", x = hier_coeff)], point_est = "mean")
+# mcmc_intervals(posterior, pars = hier_coeff[grepl("c_", x = hier_coeff)], point_est = "mean")
+# mcmc_intervals(posterior, pars = hier_coeff[grepl("d_", x = hier_coeff)], point_est = "mean")
+# mcmc_intervals(posterior, pars = hier_coeff[grepl("g_", x = hier_coeff)], point_est = "mean")
 prx_hyp = c("b_", "c_", "d_", "g_")
 
 parfig_plot = lapply(prx_hyp, function(hyp) {

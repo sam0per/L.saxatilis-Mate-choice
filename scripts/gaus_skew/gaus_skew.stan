@@ -12,7 +12,7 @@ parameters {
   real<lower=-10, upper=10> asymmetry;
 }
 
-transformed parameters{
+transformed parameters {
   //vector[N] err_val;
   vector[N] y_hat;
 
@@ -34,7 +34,12 @@ model {
 
 generated quantities {
   vector[N] log_lik;
+  vector[N] y_rep;
   for (n in 1:N) {
     log_lik[n] = bernoulli_logit_lpmf(y[n] | level + scale * exp(-0.5 * ((ratio[n] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[n] - preference) / (1.414214 * choosiness))));
   }
+  for (n in 1:N) {
+    y_rep[n] = bernoulli_logit_rng(level + scale * exp(-0.5 * ((ratio[n] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[n] - preference) / (1.414214 * choosiness))));
+  }
 }
+

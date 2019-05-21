@@ -71,7 +71,11 @@ transformed parameters {
   //vector<lower=-10, upper=10>[N] asymmetry_preds;
   vector[N] y_hat;
   
+  
   //scale_preds = lambda1 + lambda2 + lambda3 .* shape;
+  
+  
+  
   for (i in 1:N) {
     scale_preds[i] = lambda1[shore[i]] + lambda2[ref[i]];
     scale[i] = inv_logit(scale_preds[i]);
