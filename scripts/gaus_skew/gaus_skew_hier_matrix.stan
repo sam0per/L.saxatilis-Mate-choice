@@ -36,7 +36,7 @@ transformed parameters {
   scale_preds = X * b_coeff;
   scale = inv_logit(scale_preds);
   preference = X * c_coeff;
-  choosiness = d_intercept + exp(M * d_coeff);
+  choosiness = exp(d_intercept + M * d_coeff);
   asymmetry = exp(X * g_coeff);
 
   for (i in 1:N) {

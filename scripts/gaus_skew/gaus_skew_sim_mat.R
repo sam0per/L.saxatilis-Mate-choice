@@ -1,6 +1,6 @@
 rm(list = ls())
 
-.packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot")
+.packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -13,13 +13,11 @@ lapply(.packages, require, character.only=TRUE)
 option_list = list(
   make_option(c("-d", "--data"), type="character", default=NULL,
               help="input data", metavar="character"),
-  make_option(c("-s", "--stanfile"), type="character", default=NULL,
-              help="model written in Stan", metavar="character"),
-  make_option(c("-i", "--iterations"), type = "integer", default = NULL,
-              help = "number of MCMC iterations", metavar = "integer"),
-  make_option(c("-c", "--chains"), type = "integer", default = 4,
-              help = "number of MCMC chains [default: %default]", metavar = "integer"),
-  make_option(c("-o", "--output"), type = "character", default = "output",
+  make_option(c("-m", "--modelpars"), type="character", default=NULL,
+              help="mean estimates of the inferred parameters", metavar="character"),
+  make_option(c("-c", "--clinepars"), type = "character", default = NULL,
+              help = "cline parameter estimates", metavar = "character"),
+  make_option(c("-o", "--output"), type = "character", default = "output_sim",
               help = "prefix for output files [default: %default]", metavar = "character"))
 
 opt_parser = OptionParser(option_list=option_list)
@@ -31,7 +29,10 @@ if (is.null(opt$data) | is.null(opt$stanfile) | is.null(opt$iterations)) {
 }
 
 
-CZ_data = read.csv(opt$data, sep = ";")
+CZ_data = read.csv(opt$data, sep = ",")
+skew_pars = read.csv(opt$modelpars, sep = ";")
+skew_pars = column_to_rownames(skew_pars, var = "parameter")
+CZ_cline_params = read.csv(opt$clinepars, row.names = 1)
 pref_out = opt$output
 
 
@@ -39,7 +40,6 @@ pref_out = opt$output
 # skew_pars = read.csv("tables/gaus_skew/SKEW/gaus_skew_params.csv", sep = ";")
 # skew_pars = column_to_rownames(skew_pars, var = "parameter")
 # colnames(CZ_data)
-
 # CZ_cline_params = read.csv("tables/clines/CZ_cline_params.csv", row.names = 1)
 
 cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc, sh, sw) {
@@ -66,32 +66,12 @@ cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc
   phen_cline = cbind(z_x, s_x, sex, position)
   return(phen_cline)
 }
-phen_cline = cline_2c3s(position = CZ_data$LCmeanDist[CZ_data$shore=="CZA"], sex = CZ_data$test_sex[CZ_data$shore=="CZA"],
-                        cl = CZ_cline_params["cl", "CZA"], cr = CZ_cline_params["cr", "CZA"],
-                        wl = CZ_cline_params["lwl", "CZA"], wr = CZ_cline_params["lwr", "CZA"],
-                        crab = CZ_cline_params["crab", "CZA"], wave = CZ_cline_params["wave", "CZA"],
-                        zs_c = CZ_cline_params["zs_c", "CZA"], zs_w = CZ_cline_params["zs_w", "CZA"],
-                        sc = CZ_cline_params["sc", "CZA"], sh = CZ_cline_params["sh", "CZA"],
-                        sw = CZ_cline_params["sw", "CZA"])
-head(phen_cline)
-tail(phen_cline)
-phen_cline = as.data.frame(cbind(phen_cline, log_len=log(CZ_data[CZ_data$shore=="CZA", ]$length_mm)))
-
-# plot(CZ_data$DistAlongPath[CZ_data$shore=="CZA"], z_xl)
-ggplot(data = phen_cline, aes(position, log_len, col=as.factor(sex))) +
-  geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), alpha=0.15) +
-  geom_point() +
-  geom_line(aes(position, z_x), size=2, alpha=0.6)
-  # geom_errorbar(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), width=0.25)
-
-# with(data = CZ_data[CZ_data$shore=="CZA", ], plot(LCmeanDist, log(length_mm), pch=19, col=test_sex))
-# points(CZ_data$LCmeanDist[CZ_data$shore=="CZA"], phen_cline[, 'z_x'])
 
 islands = as.character(unique(CZ_data$shore))
 CZs_phen_cline = lapply(islands, function(x) {
   phen_cline = cline_2c3s(position = CZ_data$LCmeanDist[CZ_data$shore==x], sex = CZ_data$test_sex[CZ_data$shore==x],
                           cl = CZ_cline_params["cl", x], cr = CZ_cline_params["cr", x],
-                          wl = CZ_cline_params["lwl", x], wr = CZ_cline_params["lwr", x],
+                          wl = exp(CZ_cline_params["lwl", x]), wr = exp(CZ_cline_params["lwr", x]),
                           crab = CZ_cline_params["crab", x], wave = CZ_cline_params["wave", x],
                           zs_c = CZ_cline_params["zs_c", x], zs_w = CZ_cline_params["zs_w", x],
                           sc = CZ_cline_params["sc", x], sh = CZ_cline_params["sh", x],
@@ -100,37 +80,23 @@ CZs_phen_cline = lapply(islands, function(x) {
   return(phen_cline)
 })
 
-# CZ_cline_params["cl", "CZA"]-CZ_cline_params["lwl", "CZA"]/2
-
-# CZ_sim[CZ_sim$position==round(cl-wl/2), ]
-
 CZs_phen_cline = lapply(CZs_phen_cline, function(x) {
   x[, "sex"] = ifelse(x[, "sex"]==1, "female", "male")
   return(x)
 })
-lapply(seq_along(islands), function(x) {
-  cline_pos = CZ_cline_params["cl", islands[x]]-CZ_cline_params["lwl", islands[x]]/2
-  CZ_sim_sex = split(CZs_phen_cline[[x]], CZs_phen_cline[[x]][, "sex"])
-  write.table(data.frame(male=as.numeric(), female=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-              file = paste0("tables/gaus_skew/SKEW/sims/", islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
-              row.names = FALSE, col.names = TRUE)
-  simYN = sim_mat(data = CZ_sim_sex, pos = cline_pos, isl = islands[x])
+
+CZs_cline_plot = lapply(seq_along(islands), function(pl) {
+  ggplot(data = CZs_phen_cline[[pl]], aes(position, log_len, col=sex)) +
+    scale_color_manual(values = c("grey", "black")) +
+    geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), fill="#e0ecf4", alpha=0.25) +
+    geom_point() +
+    geom_line(aes(position, z_x), size=1.3, alpha=0.7) +
+    labs(title = islands[pl])
+    # geom_errorbar(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), width=0.25)
 })
 
 
-# phen_cline$sex = ifelse(phen_cline$sex==1, "female", "male")
-# CZ_sim_sex = split(phen_cline, phen_cline$sex)
-
-# pos = (CZ_cline_params["cl", "CZA"]-CZ_cline_params["lwl", "CZA"]/2) - 1
-# sum(round(CZ_sim_sex$female$position)==round(pos))
-# sum(CZ_sim_sex$female$s_x > 0.5)
-# sum(CZ_sim_sex$male$s_x > 0.5)
-# rm(pos)
-
-# write.table(data.frame(male=as.numeric(), female=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-#             file = "tables/gaus_skew/SKEW/sims/CZ_sim_YN.csv", sep = ",",
-#             row.names = FALSE, col.names = TRUE)
-sim_mat = function(data, pos, isl) {
+sim_mat = function(data, pos, isl, ce) {
   bar = list()
   YN = data.frame()
   
@@ -150,14 +116,14 @@ sim_mat = function(data, pos, isl) {
   ml_sd = mean(ml_df$s_x)
   
   if (fml_sd > 0.4) {
-    fml_dtr = rnorm(n = 10, mean = fml_m, sd = log(1.5))
+    fml_dtr = rnorm(n = 200, mean = fml_m, sd = log(1.5))
   } else {
-    fml_dtr = rnorm(n = 10, mean = fml_m, sd = fml_sd)
+    fml_dtr = rnorm(n = 200, mean = fml_m, sd = fml_sd)
   }
   if (ml_sd > 0.4) {
-    ml_dtr = rnorm(n = 10, mean = ml_m, sd = log(1.5))
+    ml_dtr = rnorm(n = 200, mean = ml_m, sd = log(1.5))
   } else {
-    ml_dtr = rnorm(n = 10, mean = ml_m, sd = ml_sd)
+    ml_dtr = rnorm(n = 200, mean = ml_m, sd = ml_sd)
   }
   
   for (f in seq_along(fml_dtr)) {
@@ -176,7 +142,7 @@ sim_mat = function(data, pos, isl) {
       success = (s > 0)
       i = i + 1
     }
-    write.table(YN, file = paste0("tables/gaus_skew/SKEW/sims/", isl, "_", round(pos), "_sim_YN.csv"), append = TRUE,
+    write.table(YN, file = paste0("tables/gaus_skew/SKEW/sims/", isl, "_", ce, "_", round(pos), "_sim_YN.csv"), append = TRUE,
                 sep = ",", row.names = FALSE, col.names = FALSE)
     bar[[f]] = YN
     YN = data.frame()
@@ -184,8 +150,57 @@ sim_mat = function(data, pos, isl) {
   return(bar)
 }
 
-# sim_mat(pos = (CZ_cline_params["cl", "CZA"]-CZ_cline_params["lwl", "CZA"]/2) - 1)
 
-# res = lapply(names(fem), function(x) {
-#   sapply(names(fem$crab), function(y) sim_mat(female = fem[[x]][[y]], male = mal[[x]][[y]]))
-# })
+CZs_mate_sim = function(s, centre, width) {
+  map(seq_along(islands), function(x) {
+    map(seq(from = 1, to = 39, by = 2), function(y) {
+      # cline_pos = CZ_cline_params["cl", islands[x]] - y * CZ_cline_params["lwl", islands[x]]
+      cline_pos = sum(CZ_cline_params[centre, islands[x]], s * y * CZ_cline_params[width, islands[x]])
+      CZ_sim_sex = split(CZs_phen_cline[[x]], CZs_phen_cline[[x]][, "sex"])
+      write.table(data.frame(male=as.numeric(), female=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
+                  file = paste0("tables/gaus_skew/SKEW/sims/", islands[x], "_", centre, "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
+                  row.names = FALSE, col.names = TRUE)
+      simYN = possibly(sim_mat, otherwise = "Missing snails")
+      outYN = simYN(data = CZ_sim_sex, pos = cline_pos, isl = islands[x], ce = centre)
+      return(outYN)
+    })
+  })
+}
+CZs_right_minus = CZs_mate_sim(s = -1, centre = "cr", width = "lwr")
+CZs_right_plus = CZs_mate_sim(s = 1, centre = "cr", width = "lwr")
+CZs_left_minus = CZs_mate_sim(s = -1, centre = "cl", width = "lwl")
+CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
+
+CZA_cl_files = list.files(path = "tables/gaus_skew/SKEW/sims", pattern = "CZA_cl", full.names = TRUE)
+CZA_cl_df = lapply(1:length(CZA_cl_files), function(f) {
+  cl_pos = strsplit(basename(CZA_cl_files[f]), split = "_")[[1]][3]
+  isl_df = read.csv(CZA_cl_files[f])
+  p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
+  pos_df = cbind(isl_df, position = as.integer(rep(cl_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
+  return(pos_df)
+}) %>% rbindlist(.)
+
+CZA_cr_files = list.files(path = "tables/gaus_skew/SKEW/sims", pattern = "CZA_cr", full.names = TRUE)
+CZA_cr_df = lapply(1:length(CZA_cr_files), function(f) {
+  cr_pos = strsplit(basename(CZA_cr_files[f]), split = "_")[[1]][3]
+  isl_df = read.csv(CZA_cr_files[f])
+  p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
+  pos_df = cbind(isl_df, position = as.integer(rep(cr_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
+  return(pos_df)
+}) %>% rbindlist(.)
+
+
+ggplot(data = CZA_cl_df, aes(position, male)) +
+  geom_point() +
+  geom_point(aes(position, female), col="red")
+
+ggplot(data = CZA_cr_df, aes(position, male)) +
+  geom_point() +
+  geom_point(aes(position, female), col="red") +
+  geom_point(aes(position, am_cor), col="purple")
+
+CZA_df = rbind(CZA_cl_df, CZA_cr_df)
+ggplot(data = CZA_df, aes(position, male)) +
+  geom_point() +
+  geom_point(aes(position, female), col="red") +
+  geom_point(aes(position, am_cor), col="purple")
