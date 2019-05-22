@@ -114,12 +114,12 @@ lapply(seq_along(islands), function(x) {
   write.table(data.frame(male=as.numeric(), female=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
               file = paste0("tables/gaus_skew/SKEW/sims/", islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
               row.names = FALSE, col.names = TRUE)
-  sim_mat(data = CZ_sim_sex, pos = cline_pos, isl = islands[x])
+  simYN = sim_mat(data = CZ_sim_sex, pos = cline_pos, isl = islands[x])
 })
 
 
 # phen_cline$sex = ifelse(phen_cline$sex==1, "female", "male")
-CZ_sim_sex = split(phen_cline, phen_cline$sex)
+# CZ_sim_sex = split(phen_cline, phen_cline$sex)
 
 # pos = (CZ_cline_params["cl", "CZA"]-CZ_cline_params["lwl", "CZA"]/2) - 1
 # sum(round(CZ_sim_sex$female$position)==round(pos))
@@ -127,9 +127,9 @@ CZ_sim_sex = split(phen_cline, phen_cline$sex)
 # sum(CZ_sim_sex$male$s_x > 0.5)
 # rm(pos)
 
-write.table(data.frame(male=as.numeric(), female=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-            file = "tables/gaus_skew/SKEW/sims/CZ_sim_YN.csv", sep = ",",
-            row.names = FALSE, col.names = TRUE)
+# write.table(data.frame(male=as.numeric(), female=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
+#             file = "tables/gaus_skew/SKEW/sims/CZ_sim_YN.csv", sep = ",",
+#             row.names = FALSE, col.names = TRUE)
 sim_mat = function(data, pos, isl) {
   bar = list()
   YN = data.frame()
@@ -184,8 +184,8 @@ sim_mat = function(data, pos, isl) {
   return(bar)
 }
 
-sim_mat(pos = (CZ_cline_params["cl", "CZA"]-CZ_cline_params["lwl", "CZA"]/2) - 1)
+# sim_mat(pos = (CZ_cline_params["cl", "CZA"]-CZ_cline_params["lwl", "CZA"]/2) - 1)
 
-res = lapply(names(fem), function(x) {
-  sapply(names(fem$crab), function(y) sim_mat(female = fem[[x]][[y]], male = mal[[x]][[y]]))
-})
+# res = lapply(names(fem), function(x) {
+#   sapply(names(fem$crab), function(y) sim_mat(female = fem[[x]][[y]], male = mal[[x]][[y]]))
+# })
