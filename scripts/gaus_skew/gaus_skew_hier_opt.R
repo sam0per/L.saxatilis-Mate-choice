@@ -1,5 +1,5 @@
 # Usage example: Rscript scripts/gaus_skew/gaus_skew_hier_opt.R -d data/CZ_all_mating_clean.csv
-#                  -s models/gaus_skew/gaus_skew_hier_BCDG.rds -o gaus_skew/gaus_skew_hier_BCDG
+#                  -s models/gaus_skew/gaus_skew_hier_BCDG.rds -o gaus_skew/BCDG/gaus_skew_hier_BCDG
 
 rm(list = ls())
 
