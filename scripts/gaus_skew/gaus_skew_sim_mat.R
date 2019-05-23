@@ -171,36 +171,82 @@ CZs_right_plus = CZs_mate_sim(s = 1, centre = "cr", width = "lwr")
 CZs_left_minus = CZs_mate_sim(s = -1, centre = "cl", width = "lwl")
 CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
 
-CZA_cl_files = list.files(path = "tables/gaus_skew/SKEW/sims", pattern = "CZA_cl", full.names = TRUE)
-CZA_cl_df = lapply(1:length(CZA_cl_files), function(f) {
-  cl_pos = strsplit(basename(CZA_cl_files[f]), split = "_")[[1]][3]
-  isl_df = read.csv(CZA_cl_files[f])
-  p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
-  pos_df = cbind(isl_df, position = as.integer(rep(cl_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
-  return(pos_df)
-}) %>% rbindlist(.)
+######################
+# assortative mating #
+######################
+CZs_am = function(isls, mid_cline) {
+  c_files = lapply(seq_along(isls), function(i) {
+    lapply(seq_along(mid_cline), function(c) {
+      list.files(path = "tables/gaus_skew/SKEW/sims", pattern = paste(isls[i], mid_cline[c], sep = "_"),
+                 full.names = TRUE)
+    })
+  })
+  c_df = lapply(seq_along(isls), function(i) {
+    lapply(seq_along(mid_cline), function(c) {
+      lapply(1:length(c_files[[i]][[c]]), function(f) {
+        c_pos = strsplit(basename(c_files[[i]][[c]][f]), split = "_")[[1]][3]
+        isl_df = read.csv(c_files[[i]][[c]][f])
+        isl_df$male2 = isl_df$male^2
+        p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
+        # ss_mod = glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = isl_df)
+        # p_ss_idx = which.max(fitted(ss_mod))
+        pos_df = cbind(isl_df, position = as.integer(rep(c_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
+      })
+    })
+  })
+  return(c_df)
+}
+CZs_am_df = CZs_am(isls = islands, mid_cline = c("cl", "cr"))
 
-CZA_cr_files = list.files(path = "tables/gaus_skew/SKEW/sims", pattern = "CZA_cr", full.names = TRUE)
-CZA_cr_df = lapply(1:length(CZA_cr_files), function(f) {
-  cr_pos = strsplit(basename(CZA_cr_files[f]), split = "_")[[1]][3]
-  isl_df = read.csv(CZA_cr_files[f])
-  p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
-  pos_df = cbind(isl_df, position = as.integer(rep(cr_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
-  return(pos_df)
-}) %>% rbindlist(.)
 
 
-ggplot(data = CZA_cl_df, aes(position, male)) +
-  geom_point() +
-  geom_point(aes(position, female), col="red")
+CZs_ss = function(cz_dat) {
+  ss_mod = glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = cz_dat)
+  p_ss_idx = which.max(fitted(ss_mod))
+  return(cbind(cz_dat, male_mx=rep(cz_dat$male[p_ss_idx], nrow(cz_dat)), male_av=rep(mean(cz_dat$male), nrow(cz_dat))))
+}
 
-ggplot(data = CZA_cr_df, aes(position, male)) +
-  geom_point() +
-  geom_point(aes(position, female), col="red") +
-  geom_point(aes(position, am_cor), col="purple")
+CZs_am_ss = lapply(seq_along(islands), function(i) {
+  lapply(seq_along(c("cl", "cr")), function(c) {
+    lapply(seq_along(CZs_am_df[[i]][[c]]), function(d) {
+      CZs_ss_poss = possibly(CZs_ss, otherwise = data.frame(male=as.numeric(), female=as.numeric(),
+                                                            mountYN=as.integer(), male2=as.numeric(),
+                                                            position=as.integer(), am_cor=as.numeric(),
+                                                            male_mx=as.numeric(), male_av=as.numeric(),
+                                                            stringsAsFactors=FALSE))
+      CZs_ss_poss(cz_dat = CZs_am_df[[i]][[c]][[d]])
+    })
+  })
+})
 
-CZA_df = rbind(CZA_cl_df, CZA_cr_df)
-ggplot(data = CZA_df, aes(position, male)) +
-  geom_point() +
-  geom_point(aes(position, female), col="red") +
-  geom_point(aes(position, am_cor), col="purple")
+
+CZ_am_fun = function(data, isls, mid_cline) {
+  mid_id = as.numeric(as.factor(mid_cline))
+  CZ_clcr = rbind(rbindlist(data[[isls]][[mid_id[1]]]), rbindlist(data[[isls]][[mid_id[2]]]))
+  return(CZ_clcr)
+}
+
+CZ_am_tot = lapply(seq_along(islands), function(i) {
+  CZ_am_fun(data = CZs_am_ss, isls = i, mid_cline = c("cl", "cr"))
+})
+
+CZ_am_plot = function(data, x, y, yy, isls) {
+  am_pl = ggplot(data = data, aes(x, y)) +
+    geom_point(alpha=0.4) +
+    geom_point(aes(x, yy), col="red", alpha=0.2) +
+    geom_point(aes(x, am_cor), col="purple", size=2.5) +
+    geom_point(aes(x, male_mx), col="green", size=2.5) +
+    geom_point(aes(x, male_av), col="blue", size=2.5) +
+    labs(x = "position", y = "ln size", title = isls)
+  ggsave(filename = paste0("figures/gaus_skew/SKEW/ass_mat/", isls, "_sim_am.png"), plot = am_pl)
+}
+
+lapply(seq_along(islands), function(i) {
+  CZ_am_plot(data = CZ_am_tot[[i]], x = CZ_am_tot[[i]]$position, y = CZ_am_tot[[i]]$male,
+             yy = CZ_am_tot[[i]]$female, isls = islands[i])
+})
+
+
+####################
+# sexual selection #
+####################
