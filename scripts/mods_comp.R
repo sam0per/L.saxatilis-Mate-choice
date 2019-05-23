@@ -8,16 +8,16 @@ rm(list = ls())
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
 
-# Load packages into session 
+# Load packages into session
 lapply(.packages, require, character.only=TRUE)
 
 
 option_list = list(
-  make_option("--modelone", type="character", default=NULL, 
+  make_option("--modelone", type="character", default=NULL,
               help="first model for comparison", metavar="character"),
-  make_option("--modeltwo", type="character", default=NULL, 
+  make_option("--modeltwo", type="character", default=NULL,
               help="second model for comparison", metavar="character"),
-  make_option(c("-o", "--out"), type="character", default="mods_comp_out.csv", 
+  make_option(c("-o", "--out"), type="character", default="mods_comp_out.csv",
               help="output file name [default = %default]", metavar="character"),
   make_option(c("-d", "--data"), type="character", default=NULL,
               help="input data", metavar="character"))
@@ -34,6 +34,7 @@ if (is.null(opt$modelone) | is.null(opt$modeltwo) | is.null(opt$data)) {
 ###### approximate leave-one-out cross-validation ######
 # http://mc-stan.org/loo/articles/loo2-with-rstan.html #
 ########################################################
+CZ_data = read.csv(opt$data, sep = ";")
 # mod1 = readRDS("models/gaus_skew/gaus_skew.rds")
 mod1 = readRDS(opt$modelone)
 # mod2 = readRDS("models/gaus_skew/gaus_skew_hier_BCDG_shore.rds")
