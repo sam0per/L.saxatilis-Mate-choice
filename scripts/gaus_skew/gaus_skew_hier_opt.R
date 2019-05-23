@@ -1,21 +1,23 @@
+# Usage example: Rscript scripts/gaus_skew/gaus_skew_hier_opt.R -d data/CZ_all_mating_clean.csv
+#                  -s models/gaus_skew/gaus_skew_hier_BCDG.rds -o gaus_skew/gaus_skew_hier_BCDG
+
 rm(list = ls())
 
-.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
-              "bbmle", "loo", "ggpubr", "cowplot", "purrr", "reshape2", "gridExtra", "grid",
-              "arm", "parallel","optparse", "pracma")
+.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc",
+              "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel","optparse", "pracma")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
 
-# Load packages into session 
+# Load packages into session
 lapply(.packages, require, character.only=TRUE)
 
 
 option_list = list(
-  make_option(c("-d", "--data"), type="character", default=NULL, 
+  make_option(c("-d", "--data"), type="character", default=NULL,
               help="input data", metavar="character"),
-  make_option(c("-s", "--modelfile"), type="character", default=NULL, 
+  make_option(c("-s", "--modelfile"), type="character", default=NULL,
               help="rds output for model written in Stan", metavar="character"),
   make_option(c("-o", "--output"), type = "character", default = "output",
               help = "prefix for output files [default: %default]", metavar = "character"))
