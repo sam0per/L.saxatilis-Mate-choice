@@ -45,9 +45,9 @@ options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
 # head(CZ_data$ref_ecotype)
 # head(CZ_data$test_sex)
 
-CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
+# CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
+CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
 dM_matrix = CZ_matrix[, -1]
-# CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
 # CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)
 
 
