@@ -78,8 +78,8 @@ saveRDS(skew_hier, paste0("models/", pref_out, ".rds")
 ##########################################
 # stan skewed hierarchical post analysis #
 ##########################################
-if ("d_intercept" %in% skew_hier@model_pars) {
-  hier_pars = skew_hier@model_pars[1:5]
+if (sum(grepl(pattern = "c_intercept|d_intercept", skew_hier@model_pars)) == 2) {
+  hier_pars = skew_hier@model_pars[1:6]
 } else {
   hier_pars = skew_hier@model_pars[1:4]
 }
@@ -92,7 +92,7 @@ if (length(row.names(hier_pars_tbl))==16) {
   hier_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
 }
 
-row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(hier_matrix))
+row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(hier_matrix)[-1])
 row.names(hier_pars_tbl)[grepl("c_coeff", row.names(hier_pars_tbl))] = paste0("c_", colnames(hier_matrix))
 row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(hier_matrix)[-1])
 row.names(hier_pars_tbl)[grepl("g_coeff", row.names(hier_pars_tbl))] = paste0("g_", colnames(hier_matrix))
@@ -112,6 +112,7 @@ hier_coeff = hier_pars_df$parameter
 coeff_list = split(hier_coeff, ceiling(seq_along(hier_coeff)/length(colnames(hier_matrix))))
 # names(coeff_list) = hier_pars
 names(coeff_list) = hier_pars[grepl("coeff", hier_pars)]
+hier_draws$b_coeff = cbind(hier_draws$b_intercept, hier_draws$b_coeff)
 hier_draws$d_coeff = cbind(hier_draws$d_intercept, hier_draws$d_coeff)
 
 coeff_draws = lapply(hier_hyp, function(x) {

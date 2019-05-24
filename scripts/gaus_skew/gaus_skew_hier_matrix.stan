@@ -14,7 +14,8 @@ parameters {
   //real<lower=0, upper=3> choosiness;     //d
   //real<lower=0, upper=5> asymmetry;    //g
 
-  vector<lower=-3, upper=3>[K] b_coeff;
+  real<lower=0, upper=1> b_intercept;
+  vector<lower=-3, upper=3>[K-1] b_coeff;
   vector<lower=-3, upper=3>[K] c_coeff;
   real<lower=0.01, upper=3> d_intercept;
   vector<lower=-4, upper=4>[K-1] d_coeff;
@@ -26,15 +27,15 @@ parameters {
 }
 
 transformed parameters {
-  vector[N] scale_preds;
+  //vector[N] scale_preds;
   vector<lower=0, upper=1>[N] scale;
   vector[N] preference;
   vector<lower=0>[N] choosiness;
   vector<lower=0>[N] asymmetry;
   vector[N] y_hat;
 
-  scale_preds = X * b_coeff;
-  scale = inv_logit(scale_preds);
+  //scale_preds = X * b_coeff;
+  scale = inv_logit(b_intercept + M * b_coeff);
   preference = X * c_coeff;
   choosiness = exp(d_intercept + M * d_coeff);
   asymmetry = exp(X * g_coeff);
