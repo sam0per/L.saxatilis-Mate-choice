@@ -1,3 +1,8 @@
+# Usage example:
+# Rscript L.saxatilis-Mate-choice/scripts/mods_comp.R --modelone models/gaus_skew/gaus_skew.rds
+#   --modeltwo models/gaus_skew/gaus_skew_hier_BCDG.rds -o tables/mods_comp/comp_skew_BCDG.csv -d data/CZ_all_mating_clean.csv
+
+
 rm(list = ls())
 
 .packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
