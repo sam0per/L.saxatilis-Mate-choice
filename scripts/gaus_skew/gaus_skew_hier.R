@@ -23,6 +23,8 @@ option_list = list(
               help = "number of MCMC iterations", metavar = "integer"),
   make_option(c("-c", "--chains"), type = "integer", default = 4,
               help = "number of MCMC chains [default: %default]", metavar = "integer"),
+  make_option(c("-p", "--predictors"), type = "character", default = NULL,
+              help = "select predictors of the model matrix [all, shore, ecotype]", metavar = "character"),
   make_option(c("-o", "--output"), type = "character", default = "output",
               help = "prefix for output files [default: %default]", metavar = "character"))
 
@@ -37,6 +39,7 @@ if (is.null(opt$data) | is.null(opt$stanfile) | is.null(opt$iterations)) {
 
 CZ_data = read.csv(opt$data, sep = ";")
 pref_out = opt$output
+pred_mx = opt$predictors
 
 #########################################
 # stan hierarchical model with skewness #
@@ -49,7 +52,16 @@ options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
 # head(CZ_data$ref_ecotype)
 # head(CZ_data$test_sex)
 
-CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
+if (pred_mx == "all") {
+  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
+} else if (pred_mx == "shore") {
+  CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
+} else if (pred_mx == "ecotype") {
+  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)
+} else {
+  print("Model matrix is missing")
+}
+# CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
 # CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
 # dM_matrix = CZ_matrix[, -1]
 # CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)
@@ -91,16 +103,16 @@ if (sum(grepl(pattern = "b_intercept|d_intercept", skew_hier@model_pars)) == 2) 
 
 (hier_pars_tbl = round(summary(skew_hier, pars = hier_pars, probs=c(0.025, 0.975))$summary,2))
 
-if (length(row.names(hier_pars_tbl))==16) {
-  hier_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
-} else {
-  hier_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
-}
+# if (length(row.names(hier_pars_tbl))==16) {
+#   hier_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
+# } else {
+#   hier_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
+# }
 
-row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(hier_matrix))
-row.names(hier_pars_tbl)[grepl("c_coeff", row.names(hier_pars_tbl))] = paste0("c_", colnames(hier_matrix))
-row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(hier_matrix))
-row.names(hier_pars_tbl)[grepl("g_coeff", row.names(hier_pars_tbl))] = paste0("g_", colnames(hier_matrix))
+row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(CZ_matrix))
+row.names(hier_pars_tbl)[grepl("c_coeff", row.names(hier_pars_tbl))] = paste0("c_", colnames(CZ_matrix))
+row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(CZ_matrix))
+row.names(hier_pars_tbl)[grepl("g_coeff", row.names(hier_pars_tbl))] = paste0("g_", colnames(CZ_matrix))
 
 (hier_pars_df = rownames_to_column(as.data.frame(hier_pars_tbl), var="parameter"))
 hier_pars_df$parameter[grepl("ntercept", hier_pars_df$parameter)] = c("b_intercept", "c_intercept", "d_intercept", "g_intercept")
@@ -114,7 +126,7 @@ hier_draws = rstan::extract(skew_hier)
 
 hier_hyp = hier_pars[grepl("coeff", hier_pars)]
 hier_coeff = hier_pars_df$parameter
-coeff_list = split(hier_coeff, ceiling(seq_along(hier_coeff)/length(colnames(hier_matrix))))
+coeff_list = split(hier_coeff, ceiling(seq_along(hier_coeff)/length(colnames(CZ_matrix))))
 # names(coeff_list) = hier_pars
 names(coeff_list) = hier_pars[grepl("coeff", hier_pars)]
 # hier_draws$b_coeff = cbind(hier_draws$b_intercept, hier_draws$b_coeff)
@@ -130,7 +142,7 @@ rn_coeff_draws = lapply(seq_along(hier_hyp), function(x) {
 })
 
 coeff_parfig = lapply(seq_along(hier_hyp), function(x) {
-  lapply(seq_along(colnames(hier_matrix)), function(y) {
+  lapply(seq_along(colnames(CZ_matrix)), function(y) {
     ggplot() +
       geom_density(aes(rn_coeff_draws[[x]][, y]), fill='red', col='black') +
       labs(x="", title = coeff_list[[x]][y]) +
@@ -140,7 +152,7 @@ coeff_parfig = lapply(seq_along(hier_hyp), function(x) {
 })
 
 lapply(seq_along(hier_hyp), function(x) {
-  lapply(seq_along(colnames(hier_matrix)), function(y) {
+  lapply(seq_along(colnames(CZ_matrix)), function(y) {
     cat("Saving density plot", paste0("figures/", pref_out, "_", coeff_list[[x]][y], "_dens.png"), "...\n")
     ggsave(filename = paste0("figures/", pref_out, "_", coeff_list[[x]][y], "_dens.png"),
            plot = coeff_parfig[[x]][[y]])
