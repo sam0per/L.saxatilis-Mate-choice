@@ -144,7 +144,7 @@ rn_coeff_draws = lapply(seq_along(hier_hyp), function(x) {
 coeff_parfig = lapply(seq_along(hier_hyp), function(x) {
   lapply(seq_along(colnames(CZ_matrix)), function(y) {
     ggplot() +
-      geom_density(aes(rn_coeff_draws[[x]][, y]), fill='red', col='black') +
+      geom_density(aes(x = rn_coeff_draws[[x]][, y], y = ..scaled..), fill='red', col='black') +
       labs(x="", title = coeff_list[[x]][y]) +
       theme(axis.title = element_text(face = "bold", size = 14),
             plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
