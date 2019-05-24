@@ -1,3 +1,7 @@
+# Usage example:
+# Rscript L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier.R -d data/CZ_all_mating_clean.csv
+#   -s L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_matrix.stan -i 8000 -c 4 -o gaus_skew/BCDG_shore/gaus_skew_hier_BCDG_shore
+
 rm(list = ls())
 
 .packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot")
@@ -72,12 +76,13 @@ skew_hier = rstan::stan(file = opt$stanfile, data = dat, iter = opt$iterations, 
 
 cat("Saving", basename(pref_out), "Stan model file ...\n")
 
-saveRDS(skew_hier, paste0("models/", pref_out, ".rds")
+saveRDS(skew_hier, paste0("models/", pref_out, ".rds"))
 # saveRDS(gaus_skew, "models/gaus_skew/gaus_skew_hier_BCDG_shore_eco.rds")
 
 ##########################################
 # stan skewed hierarchical post analysis #
 ##########################################
+
 if (sum(grepl(pattern = "c_intercept|d_intercept", skew_hier@model_pars)) == 2) {
   hier_pars = skew_hier@model_pars[1:6]
 } else {
