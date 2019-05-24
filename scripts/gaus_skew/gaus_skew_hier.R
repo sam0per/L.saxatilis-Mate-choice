@@ -51,7 +51,7 @@ options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
 
 CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
 # CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
-dM_matrix = CZ_matrix[, -1]
+# dM_matrix = CZ_matrix[, -1]
 # CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)
 
 
@@ -68,7 +68,7 @@ dM_matrix = CZ_matrix[, -1]
 #            shore = CZ_data$shore, ref = CZ_data$ref_eco_sex, test = CZ_data$test_sex)
 
 dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
-           X = CZ_matrix, K = dim(CZ_matrix)[2], M = dM_matrix)
+           X = CZ_matrix, K = dim(CZ_matrix)[2])
 
 skew_hier = rstan::stan(file = opt$stanfile, data = dat, iter = opt$iterations, warmup = opt$iterations/4,
                         chains=opt$chains, refresh=opt$iterations,
@@ -83,7 +83,7 @@ saveRDS(skew_hier, paste0("models/", pref_out, ".rds"))
 # stan skewed hierarchical post analysis #
 ##########################################
 
-if (sum(grepl(pattern = "c_intercept|d_intercept", skew_hier@model_pars)) == 2) {
+if (sum(grepl(pattern = "b_intercept|d_intercept", skew_hier@model_pars)) == 2) {
   hier_pars = skew_hier@model_pars[1:6]
 } else {
   hier_pars = skew_hier@model_pars[1:4]
@@ -97,9 +97,9 @@ if (length(row.names(hier_pars_tbl))==16) {
   hier_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)
 }
 
-row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(hier_matrix)[-1])
+row.names(hier_pars_tbl)[grepl("b_coeff", row.names(hier_pars_tbl))] = paste0("b_", colnames(hier_matrix))
 row.names(hier_pars_tbl)[grepl("c_coeff", row.names(hier_pars_tbl))] = paste0("c_", colnames(hier_matrix))
-row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(hier_matrix)[-1])
+row.names(hier_pars_tbl)[grepl("d_coeff", row.names(hier_pars_tbl))] = paste0("d_", colnames(hier_matrix))
 row.names(hier_pars_tbl)[grepl("g_coeff", row.names(hier_pars_tbl))] = paste0("g_", colnames(hier_matrix))
 
 (hier_pars_df = rownames_to_column(as.data.frame(hier_pars_tbl), var="parameter"))
@@ -117,8 +117,8 @@ hier_coeff = hier_pars_df$parameter
 coeff_list = split(hier_coeff, ceiling(seq_along(hier_coeff)/length(colnames(hier_matrix))))
 # names(coeff_list) = hier_pars
 names(coeff_list) = hier_pars[grepl("coeff", hier_pars)]
-hier_draws$b_coeff = cbind(hier_draws$b_intercept, hier_draws$b_coeff)
-hier_draws$d_coeff = cbind(hier_draws$d_intercept, hier_draws$d_coeff)
+# hier_draws$b_coeff = cbind(hier_draws$b_intercept, hier_draws$b_coeff)
+# hier_draws$d_coeff = cbind(hier_draws$d_intercept, hier_draws$d_coeff)
 
 coeff_draws = lapply(hier_hyp, function(x) {
   hier_draws[[x]]

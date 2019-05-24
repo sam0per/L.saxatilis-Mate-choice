@@ -2,14 +2,23 @@ data {
   int<lower=0> N;
   int<lower=0> K;
   matrix[N, K] X;
+  matrix[N, K-1] M;
   vector[N] ratio;
   int<lower=0, upper=1> y[N];
 }
 
 parameters {
-  vector<lower=-3, upper=3>[K] b_coeff;
+  //real<lower=0, upper=0.05> level;           //a
+  //real<lower=0, upper=1> scale;           //b
+  //real<lower=-0.5, upper=0.5> preference;   //c
+  //real<lower=0, upper=3> choosiness;     //d
+  //real<lower=0, upper=5> asymmetry;    //g
+
+  real<lower=0, upper=1> b_intercept;
+  vector<lower=-3, upper=3>[K-1] b_coeff;
   vector<lower=-3, upper=3>[K] c_coeff;
-  vector<lower=-3, upper=3>[K] d_coeff;
+  real<lower=0.01, upper=3> d_intercept;
+  vector<lower=-4, upper=4>[K-1] d_coeff;
   vector<lower=-3, upper=3>[K] g_coeff;
   real<lower=0> b_sigma;
   real<lower=0> c_sigma;
@@ -18,15 +27,17 @@ parameters {
 }
 
 transformed parameters {
+  //vector[N] scale_preds;
   vector<lower=0, upper=1>[N] scale;
   vector[N] preference;
   vector<lower=0>[N] choosiness;
   vector<lower=0>[N] asymmetry;
   vector[N] y_hat;
 
-  scale = inv_logit(X * b_coeff);
+  //scale_preds = X * b_coeff;
+  scale = inv_logit(b_intercept + M * b_coeff);
   preference = X * c_coeff;
-  choosiness = exp(X * d_coeff);
+  choosiness = exp(d_intercept + M * d_coeff);
   asymmetry = exp(X * g_coeff);
 
   for (i in 1:N) {
@@ -35,6 +46,11 @@ transformed parameters {
 }
 
 model {
+  //scale ~ beta(6, 10);
+  //preference ~ normal(-0.1, 0.1);
+  //choosiness ~ gamma(7, 10);
+  //asymmetry ~ gamma(5, 3);
+
   b_sigma ~ cauchy(0, 1.5);
   c_sigma ~ cauchy(0, 1.5);
   d_sigma ~ cauchy(0, 1.5);
