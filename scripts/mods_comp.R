@@ -51,7 +51,7 @@ mod2 = readRDS(opt$modeltwo)
 mod3 = readRDS(opt$modelthree)
 mod4 = readRDS(opt$modelfour)
 
-out_comp_str = lapply(c(mod1,mod2,mod3,mod4), function(x) {
+out_comp_str = lapply(c(opt$modelone,opt$modeltwo,opt$modelthree,opt$modelfour), function(x) {
   modsplit = strsplit(strsplit(basename(x), "[.]")[[1]][1], split = "_")[[1]]
   return(modsplit[length(modsplit)])
 })
