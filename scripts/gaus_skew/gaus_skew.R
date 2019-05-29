@@ -1,8 +1,7 @@
 rm(list = ls())
 
 .packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
-              "bbmle", "loo", "ggpubr", "cowplot", "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel",
-              "rstantools", "optparse")
+              "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel", "optparse", "pracma", "ggpubr")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -28,17 +27,18 @@ if (is.null(opt$data) | is.null(opt$stanfile)){
 
 
 CZ_data = read.csv(opt$data, sep = ";")
+CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # CZ_data$ref_ecotype=as.integer(CZ_data$ref_ecotype) # 1 for crab and 2 for wave
 # CZ_data$shore=as.integer(CZ_data$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
 # head(CZ_data)
-# summary(CZ_data)
+summary(CZ_data$shore)
 
 
 ############################
 # stan model with skewness #
 ############################
 rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
+options(mc.cores = parallel::detectCores(logical = FALSE) - 1)
 
 
 dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio)
@@ -46,7 +46,8 @@ dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_r
 # dat$posterior_predictive = 1
 # fit.prior.pred = stan(file = "scripts/CZ_mating_gaus_prior_size.stan", data = dat)
 
-gaus_skew = rstan::stan(file = opt$stanfile, data = dat, iter = 8000, warmup = 2000,
+gaus_skew = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
+                        data = dat, iter = 8000, warmup = 2000,
                         chains=4, refresh=8000,
                         control = list(adapt_delta = 0.90, max_treedepth = 15))
 saveRDS(gaus_skew, "models/gaus_skew/gaus_skew.rds")
@@ -56,15 +57,15 @@ saveRDS(gaus_skew, "models/gaus_skew/gaus_skew.rds")
 #############################
 # gaus_skew = readRDS("models/gaus_skew/gaus_skew.rds")
 gaus_skew@model_pars
-gaus_size_pars = c("a","b","c","d","alpha")
+gaus_size_pars = c("b0","b1","c","d","alpha")
 #gaus_size_parfig = c("preference","choosiness","asymmetry")
 
 list_of_draws <- rstan::extract(gaus_skew)
-names(list_of_draws) = c("a","b","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
+names(list_of_draws) = c("b0","b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
 names(list_of_draws)
 parfig = lapply(gaus_size_pars, function(x) {
   ggplot() +
-    geom_density(aes(list_of_draws[[x]]), fill='red', col='black') +
+    geom_density(aes(x = list_of_draws[[x]], y = ..scaled..), fill='red', col='black') +
     labs(x="", title = x) +
     theme(axis.title = element_text(face = "bold", size = 14),
           plot.title = element_text(face = "bold",size = 15))
@@ -81,7 +82,7 @@ opt = function(b, c, alpha, d, x){
      (0.797884 * alpha * d * exp(-(0.5 * alpha^2 * (c - x)^2)/d^2) -
         (x - c) * (erf((0.707107 * alpha * (x - c))/d) + 1)))/d^2
 }
-pars = list(b = list_of_draws$b, c = list_of_draws$c, alpha = list_of_draws$alpha,
+pars = list(b = list_of_draws$b1, c = list_of_draws$c, alpha = list_of_draws$alpha,
             d = list_of_draws$d)
 
 # find the root of the derivative
@@ -95,7 +96,7 @@ opt_draws = sapply(1:24000, function(z){
 list_of_draws$opt = opt_draws
 
 opt_dens = ggplot() +
-  geom_density(aes(list_of_draws$opt), fill='red', col='black') +
+  geom_density(aes(x = list_of_draws$opt, y = ..scaled..), fill='red', col='black') +
   labs(x="", title = "optimum") +
   theme(axis.title = element_text(face = "bold", size = 14), plot.title = element_text(face = "bold", size = 15))
 mean(list_of_draws$opt)
@@ -104,7 +105,7 @@ parfig$opt = opt_dens
 
 pdf("figures/gaus_skew/SKEW/gaus_skew_pars_dens.pdf",width = 10, height = 7)
 #do.call(ggarrange, parfig)
-ggarrange(parfig$a, parfig$b, parfig$c, parfig$d, parfig$alpha, parfig$opt)
+ggarrange(parfig$b0, parfig$b1, parfig$c, parfig$d, parfig$alpha, parfig$opt)
 dev.off()
 
 
@@ -181,7 +182,7 @@ write.table(CZ_data, "tables/gaus_skew/SKEW/gaus_skew_mat.csv", row.names = FALS
 ###################################
 # plot observs and preds for skew #
 ###################################
-CZ_data = read.csv("tables/gaus_skew/SKEW/gaus_skew_mat.csv", sep = ";")
+CZ_data = read.csv("tables/gaus_skew/SKEW/gaus_skew_mat.csv")
 
 # y = CZ_data$mountYNcontact
 # y_rep = rstan::extract(CZ_mat_stan_size, pars = 'y_rep', permuted = TRUE)$y_rep

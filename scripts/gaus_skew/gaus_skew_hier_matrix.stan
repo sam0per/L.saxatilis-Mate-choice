@@ -7,10 +7,10 @@ data {
 }
 
 parameters {
-  vector<lower=-3, upper=3>[K] b_coeff;
-  vector<lower=-3, upper=3>[K] c_coeff;
-  vector<lower=-3, upper=3>[K] d_coeff;
-  vector<lower=-3, upper=3>[K] g_coeff;
+  vector<lower=-2, upper=2>[K] b_coeff;
+  vector<lower=-2, upper=2>[K] c_coeff;
+  vector<lower=-2, upper=2>[K] d_coeff;
+  vector<lower=-2, upper=2>[K] g_coeff;
   real<lower=0> b_sigma;
   real<lower=0> c_sigma;
   real<lower=0> d_sigma;

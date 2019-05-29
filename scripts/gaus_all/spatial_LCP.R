@@ -1,4 +1,36 @@
-# CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+# fix CZA, CZC, CZD
+summary(CZ_all$shore)
+isl = "CZD"
+colnames(CZ_all)
+colnames(mfn)
+CZ_LCP = read.csv("data/CZD_spatial_LCP_20190110.csv")
+colnames(CZ_LCP)
+CZ = merge(mfn, CZ_LCP, by = "snail_ID")
+plot(CZ$LCmeanDist, CZ$length_mm)
+plot(CZ$LCmeanDist, CZ$PC1)
+plot(CZ$LCmeanDist, CZ$PC2)
+plot(CZ_all[CZ_all$shore==isl,]$LCmeanDist, CZ_all[CZ_all$shore==isl,]$shape)
+CZ$shape = CZ$PC1
+CZ$shore = isl
+CZ$test_sex = CZ$sex
+intersect(colnames(CZ), colnames(CZ_all))
+setdiff(colnames(CZ_all), colnames(CZ))
+subCZ = CZ[, intersect(colnames(CZ), colnames(CZ_all))]
+# subCZ$X = CZ$X.y
+head(subCZ)
+summary(subCZ)
+write.table(subCZ, "old/CZD/final_data/CZD_use_cleanup3.csv", row.names = FALSE, col.names = TRUE, sep = ",")
+
+noCZ = CZ_all[!CZ_all$shore==isl, ]
+CZ_fin = noCZ[, intersect(colnames(noCZ), colnames(subCZ))]
+CZ_fin = arrange(rbind(CZ_fin, subCZ), shore)
+summary(CZ_fin)
+CZ_fin = CZ_fin[-(which(CZ_fin$ref_size<2)), ]
+
+# write.table(CZ_fin, "data/CZ_all_mating_clean.csv", row.names = FALSE, col.names = TRUE, sep = ",")
+
+# CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ",")
+write.table(CZ_data, "data/CZ_all_mating_clean.csv", row.names = FALSE, col.names = TRUE, sep = ";")
 CZ_mate = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 colnames(CZ_mate)
 islands = c("CZA", "CZB", "CZC", "CZD")
