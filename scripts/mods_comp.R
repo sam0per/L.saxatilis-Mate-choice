@@ -22,6 +22,10 @@ option_list = list(
               help="first model for comparison", metavar="character"),
   make_option("--modeltwo", type="character", default=NULL,
               help="second model for comparison", metavar="character"),
+  make_option("--modelthree", type="character", default=NULL,
+              help="third model for comparison", metavar="character"),
+  make_option("--modelfour", type="character", default=NULL,
+              help="fourth model for comparison", metavar="character"),
   make_option(c("-o", "--out"), type="character", default="mods_comp_out.csv",
               help="output file name [default = %default]", metavar="character"),
   make_option(c("-d", "--data"), type="character", default=NULL,
@@ -44,10 +48,20 @@ CZ_data = read.csv(opt$data, sep = ";")
 mod1 = readRDS(opt$modelone)
 # mod2 = readRDS("models/gaus_skew/gaus_skew_hier_BCDG_shore.rds")
 mod2 = readRDS(opt$modeltwo)
+mod3 = readRDS(opt$modelthree)
+mod4 = readRDS(opt$modelfour)
+
+out_comp_str = lapply(c(mod1,mod2,mod3,mod4), function(x) {
+  modsplit = strsplit(strsplit(basename(x), "[.]")[[1]][1], split = "_")[[1]]
+  return(modsplit[length(modsplit)])
+})
+
 # Extract pointwise log-likelihood and compute LOO
 log_lik_1 <- extract_log_lik(mod1, merge_chains = FALSE)
 # log_lik_2 <- extract_log_lik(gaus_all, merge_chains = FALSE)
 log_lik_2 <- extract_log_lik(mod2, merge_chains = FALSE)
+log_lik_3 <- extract_log_lik(mod3, merge_chains = FALSE)
+log_lik_4 <- extract_log_lik(mod4, merge_chains = FALSE)
 
 # provide relative effective sample sizes
 r_eff <- relative_eff(exp(log_lik_1))
@@ -66,26 +80,62 @@ r_eff_2 <- relative_eff(exp(log_lik_2))
 loo_2 <- loo(log_lik_2, r_eff = r_eff_2, cores = 4, save_psis = TRUE)
 print(paste0("LOO results for model ", basename(opt$modeltwo)))
 print(loo_2)
-
 out_mod2 = paste0(dirname(opt$out), "/loo_", strsplit(basename(opt$modeltwo), "[.]")[[1]][1], ".csv")
 write.table(round(loo_2$estimates, 2), out_mod2, sep = ",", row.names = TRUE, col.names = TRUE)
+
+r_eff_3 <- relative_eff(exp(log_lik_3))
+loo_3 <- loo(log_lik_3, r_eff = r_eff_3, cores = 4, save_psis = TRUE)
+print(paste0("LOO results for model ", basename(opt$modelthree)))
+print(loo_3)
+out_mod3 = paste0(dirname(opt$out), "/loo_", strsplit(basename(opt$modelthree), "[.]")[[1]][1], ".csv")
+write.table(round(loo_3$estimates, 2), out_mod3, sep = ",", row.names = TRUE, col.names = TRUE)
+
+r_eff_4 <- relative_eff(exp(log_lik_4))
+loo_4 <- loo(log_lik_4, r_eff = r_eff_4, cores = 4, save_psis = TRUE)
+print(paste0("LOO results for model ", basename(opt$modelfour)))
+print(loo_4)
+out_mod4 = paste0(dirname(opt$out), "/loo_", strsplit(basename(opt$modelfour), "[.]")[[1]][1], ".csv")
+write.table(round(loo_4$estimates, 2), out_mod4, sep = ",", row.names = TRUE, col.names = TRUE)
 
 print(paste0("Parameters in model ", basename(opt$modelone)))
 mod1@model_pars
 print(paste0("Parameters in model ", basename(opt$modeltwo)))
 mod2@model_pars
+print(paste0("Parameters in model ", basename(opt$modelthree)))
+mod3@model_pars
+print(paste0("Parameters in model ", basename(opt$modelfour)))
+mod4@model_pars
+
 # plot(loo_2, label_points = TRUE)
 comp1_2 <- compare(loo_1, loo_2)
 cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
            basename(opt$modelone), " and ", basename(opt$modeltwo), " along with the standard error.\n",
            " Positive difference in elpd (and its scale relative to the standard error)\nindicates a preference for the second model.\n"))
 print(comp1_2)
-
-
 elpd_diff = comp1_2[1]
 se_elpd_diff = comp1_2[2]
-write.table(data.frame(elpd_diff, se_elpd_diff), file = opt$out, row.names = FALSE, col.names = TRUE, sep = ",")
+write.table(data.frame(elpd_diff, se_elpd_diff), file = paste0("tables/mods_comp/comp_", out_comp_str[[1]], "_", out_comp_str[[2]], ".csv"),
+            row.names = FALSE, col.names = TRUE, sep = ",")
 
+comp1_4 <- compare(loo_1, loo_4)
+cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
+           basename(opt$modelone), " and ", basename(opt$modelfour), " along with the standard error.\n",
+           " Positive difference in elpd (and its scale relative to the standard error)\nindicates a preference for the second model.\n"))
+print(comp1_4)
+elpd_diff14 = comp1_4[1]
+se_elpd_diff14 = comp1_4[2]
+write.table(data.frame(elpd_diff14, se_elpd_diff14), file = paste0("tables/mods_comp/comp_", out_comp_str[[1]], "_", out_comp_str[[4]], ".csv"),
+            row.names = FALSE, col.names = TRUE, sep = ",")
+
+comp2_4 <- compare(loo_2, loo_4)
+cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
+           basename(opt$modeltwo), " and ", basename(opt$modelfour), " along with the standard error.\n",
+           " Positive difference in elpd (and its scale relative to the standard error)\nindicates a preference for the second model.\n"))
+print(comp2_4)
+elpd_diff24 = comp2_4[1]
+se_elpd_diff24 = comp2_4[2]
+write.table(data.frame(elpd_diff24, se_elpd_diff24), file = paste0("tables/mods_comp/comp_", out_comp_str[[2]], "_", out_comp_str[[4]], ".csv"),
+            row.names = FALSE, col.names = TRUE, sep = ",")
 
 y_rep_mod1 = summary(mod1, pars = c("y_rep"))$summary[,'mean']
 roc_obj_mod1 = roc(CZ_data$mountYNcontact, y_rep_mod1, ci = TRUE)

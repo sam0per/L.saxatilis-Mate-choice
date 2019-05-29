@@ -46,11 +46,11 @@ dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_r
 # dat$posterior_predictive = 1
 # fit.prior.pred = stan(file = "scripts/CZ_mating_gaus_prior_size.stan", data = dat)
 
-gaus_skew = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
+gaus_skew = rstan::stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
                         data = dat, iter = 8000, warmup = 2000,
                         chains=4, refresh=8000,
                         control = list(adapt_delta = 0.90, max_treedepth = 15))
-saveRDS(gaus_skew, "models/gaus_skew/gaus_skew.rds")
+saveRDS(gaus_skew, "models/gaus_skew/SKEW/gaus_skew.rds")
 
 #############################
 # plot post distr gaus skew #
