@@ -1,7 +1,6 @@
 rm(list = ls())
 
-.packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr", "pracma",
-              "plotly", "akima", "rgl", "parallel")
+.packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr", "pracma", "rgl", "parallel")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -55,13 +54,13 @@ cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
   z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
   s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
-  
+
   # right cline
-  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
   z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
   z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
   s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
-  
+
   # combined cline
   z_x[z_x > z_xl] <- z_xl[z_x > z_xl]
   s_x[z_x > z_xl] <- s_xl[z_x > z_xl]
@@ -101,7 +100,7 @@ CZs_cline_plot = lapply(seq_along(islands), function(pl) {
 sim_mat = function(data, pos, isl, ce) {
   bar = list()
   YN = data.frame()
-  
+
   smp_pos = seq(round(pos)-2,round(pos)+2)
   fml_df = rbindlist(lapply(seq_along(smp_pos), function(z) {
     data$female[round(data$female$position)==smp_pos[z], ]
@@ -109,14 +108,14 @@ sim_mat = function(data, pos, isl, ce) {
   ml_df = rbindlist(lapply(seq_along(smp_pos), function(z) {
     data$male[round(data$male$position)==smp_pos[z], ]
   }))
-  
+
   # fml_m = mean(CZ_sim_sex$female[round(CZ_sim_sex$female$position)==seq(round(pos)-1,round(pos)+1), ]$z_x)
   # fml_sd = mean(CZ_sim_sex$female[round(CZ_sim_sex$female$position)==c(round(pos)-1,round(pos),round(pos)+1), ]$s_x)
   fml_m = mean(fml_df$z_x)
   fml_sd = mean(fml_df$s_x)
   ml_m = mean(ml_df$z_x)
   ml_sd = mean(ml_df$s_x)
-  
+
   if (fml_sd > 0.4) {
     fml_dtr = rnorm(n = 1000, mean = fml_m, sd = log(1.5))
   } else {
@@ -127,7 +126,7 @@ sim_mat = function(data, pos, isl, ce) {
   } else {
     ml_dtr = rnorm(n = 1000, mean = ml_m, sd = ml_sd)
   }
-  
+
   for (f in seq_along(fml_dtr)) {
     success=FALSE
     i=1
@@ -250,7 +249,7 @@ CZ_am_tot = lapply(seq_along(islands), function(i) {
 #     labs(x = "position", y = "ln size", title = isls)
 #   ggsave(filename = paste0("figures/gaus_skew/SKEW/ass_mat/", isls, "_sim_am.png"), plot = am_pl)
 # }
-# 
+#
 # lapply(seq_along(islands), function(i) {
 #   CZ_am_plot(data = CZ_am_tot[[i]], x = CZ_am_tot[[i]]$position, y = CZ_am_tot[[i]]$male,
 #              yy = CZ_am_tot[[i]]$female, isls = islands[i])
@@ -298,7 +297,7 @@ lapply(CZ_sim_grid, head)
 #   print(df_merge$xx[i])
 # }
 # plot(CZ_am_Y$xx, CZ_am_Y$y)
-# 
+#
 # df_grid  <- expand.grid(x = seq(from = min(CZ_am_Y$x), to = max(CZ_am_Y$x), by = 10), y = unique(round(CZ_am_Y$y, 1)))
 # head(df_grid)
 # plot(df_grid$x, df_grid$y)
@@ -384,5 +383,3 @@ lapply(seq_along(islands), function(sv) {
 #   scale_fill_viridis_c()
 #   scale_fill_continuous(low="thistle2", high="darkred",
 #                         guide="colorbar",na.value="thistle2")
-
-
