@@ -177,6 +177,8 @@ CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
 # assortative mating #
 ######################
 rm(list = ls())
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
 CZ_data = read.csv(opt$data, sep = ";")
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 islands = as.character(unique(CZ_data$shore))
