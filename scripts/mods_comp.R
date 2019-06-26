@@ -117,6 +117,16 @@ se_elpd_diff = comp1_2[2]
 write.table(data.frame(elpd_diff, se_elpd_diff), file = paste0("tables/mods_comp/comp_", out_comp_str[[1]], "_", out_comp_str[[2]], ".csv"),
             row.names = FALSE, col.names = TRUE, sep = ",")
 
+comp1_3 <- compare(loo_1, loo_3)
+cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
+           basename(opt$modelone), " and ", basename(opt$modelthree), " along with the standard error.\n",
+           " Positive difference in elpd (and its scale relative to the standard error)\nindicates a preference for the second model.\n"))
+print(comp1_3)
+elpd_diff13 = comp1_3[1]
+se_elpd_diff13 = comp1_3[2]
+write.table(data.frame(elpd_diff13, se_elpd_diff13), file = paste0("tables/mods_comp/comp_", out_comp_str[[1]], "_", out_comp_str[[3]], ".csv"),
+            row.names = FALSE, col.names = TRUE, sep = ",")
+
 comp1_4 <- compare(loo_1, loo_4)
 cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
            basename(opt$modelone), " and ", basename(opt$modelfour), " along with the standard error.\n",
@@ -127,6 +137,16 @@ se_elpd_diff14 = comp1_4[2]
 write.table(data.frame(elpd_diff14, se_elpd_diff14), file = paste0("tables/mods_comp/comp_", out_comp_str[[1]], "_", out_comp_str[[4]], ".csv"),
             row.names = FALSE, col.names = TRUE, sep = ",")
 
+comp2_3 <- compare(loo_2, loo_3)
+cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
+           basename(opt$modeltwo), " and ", basename(opt$modelthree), " along with the standard error.\n",
+           " Positive difference in elpd (and its scale relative to the standard error)\nindicates a preference for the second model.\n"))
+print(comp2_3)
+elpd_diff23 = comp2_3[1]
+se_elpd_diff23 = comp2_3[2]
+write.table(data.frame(elpd_diff23, se_elpd_diff23), file = paste0("tables/mods_comp/comp_", out_comp_str[[2]], "_", out_comp_str[[3]], ".csv"),
+            row.names = FALSE, col.names = TRUE, sep = ",")
+
 comp2_4 <- compare(loo_2, loo_4)
 cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
            basename(opt$modeltwo), " and ", basename(opt$modelfour), " along with the standard error.\n",
@@ -135,6 +155,16 @@ print(comp2_4)
 elpd_diff24 = comp2_4[1]
 se_elpd_diff24 = comp2_4[2]
 write.table(data.frame(elpd_diff24, se_elpd_diff24), file = paste0("tables/mods_comp/comp_", out_comp_str[[2]], "_", out_comp_str[[4]], ".csv"),
+            row.names = FALSE, col.names = TRUE, sep = ",")
+
+comp3_4 <- compare(loo_3, loo_4)
+cat(paste0("estimated difference of expected leave-one-out prediction errors\nbetween ",
+           basename(opt$modelthree), " and ", basename(opt$modelfour), " along with the standard error.\n",
+           " Positive difference in elpd (and its scale relative to the standard error)\nindicates a preference for the second model.\n"))
+print(comp3_4)
+elpd_diff34 = comp3_4[1]
+se_elpd_diff34 = comp3_4[2]
+write.table(data.frame(elpd_diff34, se_elpd_diff34), file = paste0("tables/mods_comp/comp_", out_comp_str[[3]], "_", out_comp_str[[4]], ".csv"),
             row.names = FALSE, col.names = TRUE, sep = ",")
 
 y_rep_mod1 = summary(mod1, pars = c("y_rep"))$summary[,'mean']
