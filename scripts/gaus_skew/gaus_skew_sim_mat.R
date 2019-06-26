@@ -177,6 +177,11 @@ CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
 # assortative mating #
 ######################
 rm(list = ls())
+option_list = list(
+  make_option(c("-d", "--data"), type="character", default=NULL,
+              help="input data", metavar="character"),
+  make_option(c("-o", "--output"), type = "character", default = "output_sim",
+              help = "directory for output files [default: %default]", metavar = "character"))
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 CZ_data = read.csv(opt$data, sep = ";")
@@ -338,8 +343,13 @@ df_am = lapply(seq_along(islands), function(sp) {
       geom_tile(aes(fill = am_cor)) +
       scale_fill_viridis_c()
   })
+df_am_c = lapply(seq_along(islands), function(cc) {
+  df_am[[cc]] + geom_vline(xintercept = as.numeric(CZ_cline_params["cl", islands[cc]]), linetype="dotted", color = "black", size=1.5) +
+  geom_vline(xintercept = as.numeric(CZ_cline_params["cr", islands[cc]]), linetype="dotted", color = "black", size=1.5)
+})
+
 lapply(seq_along(islands), function(sv) {
-  ggsave(filename = paste0("figures/", pref_out, islands[sv], "_sim_am_grid.png"), plot = df_am[[sv]])
+  ggsave(filename = paste0("figures/", pref_out, islands[sv], "_sim_am_grid.png"), plot = df_am_c[[sv]])
 })
 
 
@@ -366,7 +376,9 @@ df_ss_pl = lapply(seq_along(islands), function(p) {
     geom_tile(aes(fill = sk_prob)) +
     scale_fill_viridis_c() +
     geom_point(data = df_mx[[p]], aes(xx, male), col="red", size = 2.5) +
-    geom_point(data = df_av[[p]], aes(xx, male), col="white", size = 1.8)
+    geom_point(data = df_av[[p]], aes(xx, male), col="white", size = 1.8) +
+    geom_vline(xintercept = as.numeric(CZ_cline_params["cl", islands[p]]), linetype="dotted", color = "black", size=1.5) +
+    geom_vline(xintercept = as.numeric(CZ_cline_params["cr", islands[p]]), linetype="dotted", color = "black", size=1.5)
 })
 lapply(seq_along(islands), function(sv) {
   ggsave(filename = paste0("figures/", pref_out, islands[sv], "_sim_ss_grid.png"), plot = df_ss_pl[[sv]])
