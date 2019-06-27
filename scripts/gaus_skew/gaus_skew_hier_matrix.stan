@@ -33,10 +33,10 @@ transformed parameters {
 }
 
 model {
-  b_coeff ~ normal(0, 2);
-  c_coeff ~ normal(0, 2);
-  d_coeff ~ normal(0, 2);
-  g_coeff ~ normal(0, 2);
+  b_coeff ~ normal(0, 1);
+  c_coeff ~ normal(0, 1);
+  d_coeff ~ normal(0, 1);
+  g_coeff ~ normal(0, 1);
 
   y ~ bernoulli_logit(logit(y_hat));
 }
