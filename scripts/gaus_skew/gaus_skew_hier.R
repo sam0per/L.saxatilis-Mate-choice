@@ -1,6 +1,7 @@
 # Usage example:
 # Rscript L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier.R -d data/CZ_all_mating_clean.csv
-#   -s L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_matrix.stan -i 8000 -c 4 -o gaus_skew/BCDG_shore/gaus_skew_hier_BCDG_shore
+#   -s L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_matrix.stan -i 8000 -c 4 -p shore
+#   -o gaus_skew/BCDG_shore/gaus_skew_hier_BCDG_shore
 
 rm(list = ls())
 
@@ -24,7 +25,7 @@ option_list = list(
   make_option(c("-c", "--chains"), type = "integer", default = 4,
               help = "number of MCMC chains [default: %default]", metavar = "integer"),
   make_option(c("-p", "--predictors"), type = "character", default = NULL,
-              help = "select predictors of the model matrix [all, shore, ecotype]", metavar = "character"),
+              help = "select predictors of the model matrix [all, shore, ecotype, sex]", metavar = "character"),
   make_option(c("-o", "--output"), type = "character", default = "output",
               help = "prefix for output files [default: %default]", metavar = "character"))
 
@@ -58,6 +59,8 @@ if (pred_mx == "all") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)
 } else if (pred_mx == "ecotype") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)
+} else if (pred_mx == "sex") {
+  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex, data = CZ_data)
 } else {
   print("Model matrix is missing")
 }
