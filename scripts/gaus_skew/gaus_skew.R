@@ -15,7 +15,9 @@ option_list = list(
   make_option(c("-d", "--data"), type="character", default=NULL,
               help="input data", metavar="character"),
   make_option(c("-s", "--stanfile"), type="character", default=NULL,
-              help="model written in Stan", metavar="character"))
+              help="model written in Stan", metavar="character"),
+  make_option(c("-o", "--output"), type = "character", default = "output",
+              help = "prefix for output files [default: %default]", metavar = "character"))
 
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
@@ -27,18 +29,19 @@ if (is.null(opt$data) | is.null(opt$stanfile)){
 
 
 CZ_data = read.csv(opt$data, sep = ";")
-CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+pref_out = opt$output
+# CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # CZ_data$ref_ecotype=as.integer(CZ_data$ref_ecotype) # 1 for crab and 2 for wave
 # CZ_data$shore=as.integer(CZ_data$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
 # head(CZ_data)
-summary(CZ_data$shore)
+# summary(CZ_data$shore)
 
 
 ############################
 # stan model with skewness #
 ############################
 rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores(logical = FALSE) - 1)
+options(mc.cores = parallel::detectCores(logical = FALSE) - 2)
 
 
 dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio)
@@ -46,7 +49,7 @@ dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_r
 # dat$posterior_predictive = 1
 # fit.prior.pred = stan(file = "scripts/CZ_mating_gaus_prior_size.stan", data = dat)
 
-gaus_skew = rstan::stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
+gaus_skew = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
                         data = dat, iter = 8000, warmup = 2000,
                         chains=4, refresh=8000,
                         control = list(adapt_delta = 0.90, max_treedepth = 15))
@@ -57,11 +60,13 @@ saveRDS(gaus_skew, "models/gaus_skew/SKEW/gaus_skew.rds")
 #############################
 # gaus_skew = readRDS("models/gaus_skew/gaus_skew.rds")
 gaus_skew@model_pars
-gaus_size_pars = c("b0","b1","c","d","alpha")
+gaus_size_pars = c("b1","c","d","alpha")
+# gaus_size_pars = c("b0","b1","c","d","alpha")
 #gaus_size_parfig = c("preference","choosiness","asymmetry")
 
 list_of_draws <- rstan::extract(gaus_skew)
-names(list_of_draws) = c("b0","b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
+names(list_of_draws) = c("b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
+# names(list_of_draws) = c("b0","b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
 names(list_of_draws)
 parfig = lapply(gaus_size_pars, function(x) {
   ggplot() +
@@ -105,7 +110,7 @@ parfig$opt = opt_dens
 
 pdf("figures/gaus_skew/SKEW/gaus_skew_pars_dens.pdf",width = 10, height = 7)
 #do.call(ggarrange, parfig)
-ggarrange(parfig$b0, parfig$b1, parfig$c, parfig$d, parfig$alpha, parfig$opt)
+ggarrange(parfig$b1, parfig$c, parfig$d, parfig$alpha, parfig$opt)
 dev.off()
 
 
@@ -114,9 +119,11 @@ dev.off()
 #########################
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # CZ_data = read.csv("data/CZ_all_mating_clean_copy.csv", sep = ";")
-gaus_skew_pars = c("level","scale","preference","choosiness","asymmetry")
+gaus_skew_pars = c("scale","preference","choosiness","asymmetry")
+# gaus_skew_pars = c("level","scale","preference","choosiness","asymmetry")
 
 (skew_params = round(summary(gaus_skew, pars = gaus_skew_pars, probs=c(0.025, 0.975))$summary,2))
+rownames(skew_params) = c("b1","c","d","alpha")
 # class(gaus_skew)
 
 y_hat = summary(gaus_skew, pars = c("y_hat"))$summary[,'mean']

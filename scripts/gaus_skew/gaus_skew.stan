@@ -5,7 +5,7 @@ data {
 }
 
 parameters {
-  real<lower=0, upper=1> level;
+  //real<lower=0, upper=1> level;
   real<lower=0, upper=1> scale;
   real<lower=-10, upper=10> preference;
   real<lower=0, upper=10> choosiness;
@@ -17,7 +17,7 @@ transformed parameters {
   vector[N] y_hat;
 
   for (i in 1:N) {
-    y_hat[i] = level + scale * exp(-0.5 * ((ratio[i] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[i] - preference) / (1.414214 * choosiness)));
+    y_hat[i] = scale * exp(-0.5 * ((ratio[i] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[i] - preference) / (1.414214 * choosiness)));
   }
   
   //y_prob = y_hat .* (1 + erf(err_val));
@@ -28,7 +28,6 @@ model {
   //preference ~ normal(0, 10);
   //asymmetry ~ normal(0, 10);
   
-  
   y ~ bernoulli_logit(logit(y_hat));
 }
 
@@ -36,10 +35,10 @@ generated quantities {
   vector[N] log_lik;
   vector[N] y_rep;
   for (n in 1:N) {
-    log_lik[n] = bernoulli_logit_lpmf(y[n] | level + scale * exp(-0.5 * ((ratio[n] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[n] - preference) / (1.414214 * choosiness))));
+    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit(scale * exp(-0.5 * ((ratio[n] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[n] - preference) / (1.414214 * choosiness)))));
   }
   for (n in 1:N) {
-    y_rep[n] = bernoulli_logit_rng(level + scale * exp(-0.5 * ((ratio[n] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[n] - preference) / (1.414214 * choosiness))));
+    y_rep[n] = bernoulli_logit_rng(logit(scale * exp(-0.5 * ((ratio[n] - preference) / choosiness)^2) * (1 + erf(asymmetry * (ratio[n] - preference) / (1.414214 * choosiness)))));
   }
 }
 
