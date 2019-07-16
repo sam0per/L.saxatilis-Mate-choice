@@ -54,9 +54,10 @@ mod2 = readRDS(opt$modeltwo)
 mod3 = readRDS(opt$modelthree)
 mod4 = readRDS(opt$modelfour)
 
-out_comp_str = lapply(c(opt$modelone,opt$modeltwo,opt$modelthree,opt$modelfour,opt$nnhier), function(x) {
+out_comp_str = lapply(mod_str, function(x) {
   modsplit = strsplit(strsplit(basename(x), "[.]")[[1]][1], split = "_")[[1]]
-  return(modsplit[length(modsplit)])
+  modstr = modsplit[(length(modsplit)-1):length(modsplit)]
+  return(paste0(modstr[1], modstr[2]))
 })
 
 # Extract pointwise log-likelihood and compute LOO

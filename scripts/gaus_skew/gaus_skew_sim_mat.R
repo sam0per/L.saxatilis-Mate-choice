@@ -1,14 +1,11 @@
 rm(list = ls())
 
 .packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr", "pracma", "rgl", "parallel")
-
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
-
 # Load packages into session
 lapply(.packages, require, character.only=TRUE)
-
 
 option_list = list(
   make_option(c("-d", "--data"), type="character", default=NULL,
@@ -28,14 +25,11 @@ if (is.null(opt$data) | is.null(opt$modelpars) | is.null(opt$clinepars)) {
   stop("At least three arguments must be supplied (input data, stan model and cline parameters).\n", call.=FALSE)
 }
 
-
 CZ_data = read.csv(opt$data, sep = ";")
 skew_pars = read.csv(opt$modelpars, sep = ",")
 skew_pars = column_to_rownames(skew_pars, var = "parameter")
 CZ_cline_params = read.csv(opt$clinepars, row.names = 1)
 pref_out = opt$output
-
-
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # skew_pars = read.csv("tables/gaus_skew/SKEW/gaus_skew_params.csv", sep = ";")
 # skew_pars = column_to_rownames(skew_pars, var = "parameter")
@@ -67,46 +61,49 @@ cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc
   phen_cline = cbind(z_x, s_x, sex, position)
   return(phen_cline)
 }
-cline_2c3s(position = 3, sex = "female",
-           cl = CZ_cline_params["cl", islands], cr = CZ_cline_params["cr", islands],
-           wl = exp(CZ_cline_params["lwl", islands]), wr = exp(CZ_cline_params["lwr", islands]),
-           crab = CZ_cline_params["crab", islands], wave = CZ_cline_params["wave", islands],
-           zs_c = CZ_cline_params["zs_c", islands], zs_w = CZ_cline_params["zs_w", islands],
-           sc = CZ_cline_params["sc", islands], sh = CZ_cline_params["sh", islands],
-           sw = CZ_cline_params["sw", islands])
-islands = as.character(unique(CZ_data$shore))
 # islands = "CZB"
-CZs_phen_cline = lapply(islands, function(x) {
-  phen_cline = cline_2c3s(position = CZ_data$LCmeanDist[CZ_data$shore==x], sex = CZ_data$test_sex[CZ_data$shore==x],
-                          cl = CZ_cline_params["cl", x], cr = CZ_cline_params["cr", x],
-                          wl = exp(CZ_cline_params["lwl", x]), wr = exp(CZ_cline_params["lwr", x]),
-                          crab = CZ_cline_params["crab", x], wave = CZ_cline_params["wave", x],
-                          zs_c = CZ_cline_params["zs_c", x], zs_w = CZ_cline_params["zs_w", x],
-                          sc = CZ_cline_params["sc", x], sh = CZ_cline_params["sh", x],
-                          sw = CZ_cline_params["sw", x])
-  phen_cline = as.data.frame(cbind(phen_cline, log_len=log(CZ_data[CZ_data$shore==x, ]$length_mm)))
-  return(phen_cline)
-})
+# cline_2c3s(position = 3, sex = "female",
+#            cl = CZ_cline_params["cl", islands], cr = CZ_cline_params["cr", islands],
+#            wl = exp(CZ_cline_params["lwl", islands]), wr = exp(CZ_cline_params["lwr", islands]),
+#            crab = CZ_cline_params["crab", islands], wave = CZ_cline_params["wave", islands],
+#            zs_c = CZ_cline_params["zs_c", islands], zs_w = CZ_cline_params["zs_w", islands],
+#            sc = CZ_cline_params["sc", islands], sh = CZ_cline_params["sh", islands],
+#            sw = CZ_cline_params["sw", islands])
+islands = as.character(unique(CZ_data$shore))
 
-CZs_phen_cline = lapply(CZs_phen_cline, function(x) {
-  x[, "sex"] = ifelse(x[, "sex"]==1, "female", "male")
-  return(x)
-})
+# CZs_phen_cline = lapply(islands, function(x) {
+#   phen_cline = cline_2c3s(position = CZ_data$LCmeanDist[CZ_data$shore==x], sex = CZ_data$test_sex[CZ_data$shore==x],
+#                           cl = CZ_cline_params["cl", x], cr = CZ_cline_params["cr", x],
+#                           wl = exp(CZ_cline_params["lwl", x]), wr = exp(CZ_cline_params["lwr", x]),
+#                           crab = CZ_cline_params["crab", x], wave = CZ_cline_params["wave", x],
+#                           zs_c = CZ_cline_params["zs_c", x], zs_w = CZ_cline_params["zs_w", x],
+#                           sc = CZ_cline_params["sc", x], sh = CZ_cline_params["sh", x],
+#                           sw = CZ_cline_params["sw", x])
+#   phen_cline = as.data.frame(cbind(phen_cline, log_len=log(CZ_data[CZ_data$shore==x, ]$length_mm)))
+#   return(phen_cline)
+# })
+# 
+# CZs_phen_cline = lapply(CZs_phen_cline, function(x) {
+#   x[, "sex"] = ifelse(x[, "sex"]==1, "female", "male")
+#   return(x)
+# })
+# 
+# CZs_cline_plot = lapply(seq_along(islands), function(pl) {
+#   ggplot(data = CZs_phen_cline[[pl]], aes(position, log_len, col=sex)) +
+#     scale_color_manual(values = c("grey", "black")) +
+#     geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), fill="#e0ecf4", alpha=0.25) +
+#     geom_point() +
+#     geom_line(aes(position, z_x), size=1.3, alpha=0.7) +
+#     labs(title = islands[pl])
+#     # geom_errorbar(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), width=0.25)
+# })
 
-CZs_cline_plot = lapply(seq_along(islands), function(pl) {
-  ggplot(data = CZs_phen_cline[[pl]], aes(position, log_len, col=sex)) +
-    scale_color_manual(values = c("grey", "black")) +
-    geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), fill="#e0ecf4", alpha=0.25) +
-    geom_point() +
-    geom_line(aes(position, z_x), size=1.3, alpha=0.7) +
-    labs(title = islands[pl])
-    # geom_errorbar(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), width=0.25)
+isl_pos = sapply(islands, function(x) {
+  isl_rng = range(CZ_data[CZ_data$shore==x, ]$LCmeanDist)
+  # str(isl_rng)
+  round(seq(isl_rng[1], to = isl_rng[2], by = 100))
 })
-
-range(CZ_data[CZ_data$shore==islands, ]$LCmeanDist)
-seq(as.integer(min(CZ_data[CZ_data$shore==islands, ]$LCmeanDist)),
-    (CZ_cline_params["cl", islands]-exp(CZ_cline_params["lwl", islands])), by = 5)
-pos = 60
+# pos = 60
 sim_mat = function(pos, isl) {
   bar = list()
   YN = data.frame()
@@ -160,8 +157,8 @@ sim_mat = function(pos, isl) {
     while (!success) {
       # m = sample(ml_dtr, 1, replace = FALSE)
       m = fem + rnorm(n=1, mean=0, sd=1.5)
-      p = skew_pars["b1","mean"] * exp(-0.5 * (((fem - m) - skew_pars["c","mean"])
-                                               / skew_pars["d","mean"])^2) *
+      p = 0.01 + skew_pars["b","mean"] * exp(-0.5 * (((fem - m) - skew_pars["c","mean"])
+                                                     / skew_pars["d","mean"])^2) *
         (1 + erf(skew_pars["alpha","mean"] * ((fem - m) - skew_pars["c","mean"]) / (1.414214 * skew_pars["d","mean"])))
       s = rbinom(n = 1, size = 1, prob = p)
       YN[i,'male'] = m
@@ -182,33 +179,33 @@ sim_mat = function(pos, isl) {
   return(bar)
 }
 
-CZs_mate_sim = function(centre, width) {
-  map(seq_along(islands), function(x) {
-    map(seq_along(c(5, 80)), function(y) {
-    # map(seq(from = 1, to = 20, by = 2), function(y) {
-      # cline_pos = CZ_cline_params["cl", islands[x]] - y * CZ_cline_params["lwl", islands[x]]
-      # cline_pos = sum(CZ_cline_params[centre, islands[x]], s * y * CZ_cline_params[width, islands[x]])
-      cline_pos = y
-      # CZ_sim_sex = split(CZs_phen_cline[[x]], CZs_phen_cline[[x]][, "sex"])
-      # write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-      #             file = paste0("tables/", pref_out, islands[x], "_", centre, "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
-      #             row.names = FALSE, col.names = TRUE)
-      write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-                  file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
-                  row.names = FALSE, col.names = TRUE)
-      simYN = possibly(sim_mat, otherwise = "Missing snails")
-      outYN = simYN(data = CZ_sim_sex, pos = cline_pos, isl = islands[x])
-      return(outYN)
-    })
-  })
-}
-CZs_right_minus = CZs_mate_sim(s = -1, centre = "cr", width = "lwr")
-CZs_right_plus = CZs_mate_sim(s = 1, centre = "cr", width = "lwr")
-CZs_left_minus = CZs_mate_sim(s = -1, centre = "cl", width = "lwl")
-CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
+# CZs_mate_sim = function(centre, width) {
+#   map(seq_along(islands), function(x) {
+#     map(seq_along(c(5, 80)), function(y) {
+#     # map(seq(from = 1, to = 20, by = 2), function(y) {
+#       # cline_pos = CZ_cline_params["cl", islands[x]] - y * CZ_cline_params["lwl", islands[x]]
+#       # cline_pos = sum(CZ_cline_params[centre, islands[x]], s * y * CZ_cline_params[width, islands[x]])
+#       cline_pos = y
+#       # CZ_sim_sex = split(CZs_phen_cline[[x]], CZs_phen_cline[[x]][, "sex"])
+#       # write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
+#       #             file = paste0("tables/", pref_out, islands[x], "_", centre, "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
+#       #             row.names = FALSE, col.names = TRUE)
+#       write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
+#                   file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
+#                   row.names = FALSE, col.names = TRUE)
+#       simYN = possibly(sim_mat, otherwise = "Missing snails")
+#       outYN = simYN(data = CZ_sim_sex, pos = cline_pos, isl = islands[x])
+#       return(outYN)
+#     })
+#   })
+# }
+# CZs_right_minus = CZs_mate_sim(s = -1, centre = "cr", width = "lwr")
+# CZs_right_plus = CZs_mate_sim(s = 1, centre = "cr", width = "lwr")
+# CZs_left_minus = CZs_mate_sim(s = -1, centre = "cl", width = "lwl")
+# CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
 
 map(seq_along(islands), function(x) {
-  map(c(5, 80), function(y) {
+  map(isl_pos[[x]], function(y) {
     cline_pos = y
     write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
                 file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",

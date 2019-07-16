@@ -27,15 +27,10 @@ if (is.null(opt$data) | is.null(opt$stanfile)){
   stop("At least two arguments must be supplied (input data and stan file).\n", call.=FALSE)
 }
 
-
 CZ_data = read.csv(opt$data, sep = ";")
 pref_out = opt$output
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
-# CZ_data$ref_ecotype=as.integer(CZ_data$ref_ecotype) # 1 for crab and 2 for wave
-# CZ_data$shore=as.integer(CZ_data$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
-# head(CZ_data)
-# summary(CZ_data$shore)
-
+# pref_out = "gaus_skew/SKEW/gaus_skew"
 
 ############################
 # stan model with skewness #
@@ -60,12 +55,12 @@ saveRDS(gaus_skew, "models/gaus_skew/SKEW/gaus_skew.rds")
 #############################
 # gaus_skew = readRDS("models/gaus_skew/gaus_skew.rds")
 gaus_skew@model_pars
-gaus_size_pars = c("b1","c","d","alpha")
+gaus_size_pars = c("b","c","d","alpha")
 # gaus_size_pars = c("b0","b1","c","d","alpha")
 #gaus_size_parfig = c("preference","choosiness","asymmetry")
 
 list_of_draws <- rstan::extract(gaus_skew)
-names(list_of_draws) = c("b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
+names(list_of_draws) = c("b","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
 # names(list_of_draws) = c("b0","b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
 names(list_of_draws)
 parfig = lapply(gaus_size_pars, function(x) {
@@ -87,7 +82,7 @@ opt = function(b, c, alpha, d, x){
      (0.797884 * alpha * d * exp(-(0.5 * alpha^2 * (c - x)^2)/d^2) -
         (x - c) * (erf((0.707107 * alpha * (x - c))/d) + 1)))/d^2
 }
-pars = list(b = list_of_draws$b1, c = list_of_draws$c, alpha = list_of_draws$alpha,
+pars = list(b = list_of_draws$b, c = list_of_draws$c, alpha = list_of_draws$alpha,
             d = list_of_draws$d)
 
 # find the root of the derivative
@@ -110,7 +105,7 @@ parfig$opt = opt_dens
 
 pdf("figures/gaus_skew/SKEW/gaus_skew_pars_dens.pdf",width = 10, height = 7)
 #do.call(ggarrange, parfig)
-ggarrange(parfig$b1, parfig$c, parfig$d, parfig$alpha, parfig$opt)
+ggarrange(parfig$b, parfig$c, parfig$d, parfig$alpha, parfig$opt)
 dev.off()
 
 
@@ -119,11 +114,12 @@ dev.off()
 #########################
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # CZ_data = read.csv("data/CZ_all_mating_clean_copy.csv", sep = ";")
-gaus_skew_pars = c("scale","preference","choosiness","asymmetry")
+gaus_skew@model_pars
+gaus_skew_pars = c("b_par","c_par","d_par","alpha_par")
 # gaus_skew_pars = c("level","scale","preference","choosiness","asymmetry")
 
 (skew_params = round(summary(gaus_skew, pars = gaus_skew_pars, probs=c(0.025, 0.975))$summary,2))
-rownames(skew_params) = c("b1","c","d","alpha")
+rownames(skew_params) = c("b","c","d","alpha")
 # class(gaus_skew)
 
 y_hat = summary(gaus_skew, pars = c("y_hat"))$summary[,'mean']
@@ -189,7 +185,7 @@ write.table(CZ_data, "tables/gaus_skew/SKEW/gaus_skew_mat.csv", row.names = FALS
 ###################################
 # plot observs and preds for skew #
 ###################################
-CZ_data = read.csv("tables/gaus_skew/SKEW/gaus_skew_mat.csv")
+CZ_data = read.csv("tables/gaus_skew/SKEW/gaus_skew_mat.csv", sep = ";")
 
 # y = CZ_data$mountYNcontact
 # y_rep = rstan::extract(CZ_mat_stan_size, pars = 'y_rep', permuted = TRUE)$y_rep
@@ -224,9 +220,9 @@ ggplot(data = CZ_data) +
   geom_line(aes(size_ratio, stan_yhat, col="predictions")) +
   geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
   labs(size="bin size",x="ln female size - ln male size",
-       y="mating prob.",col="") +
+       y="probability of mating",col="") +
   scale_x_continuous(breaks = seq(-1.5,1.5,0.5)) +
   theme(legend.text = element_text(size = 15,face = "bold"), legend.position = 'none',
-        axis.title = element_text(face = "bold", size = 15)) +
-  grids(linetype = "dashed")
+        axis.title = element_text(face = "bold", size = 15))
+  # grids(linetype = "dashed")
 dev.off()

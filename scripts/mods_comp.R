@@ -1,6 +1,7 @@
 # Usage example:
-# Rscript L.saxatilis-Mate-choice/scripts/mods_comp.R --modelone models/gaus_skew/gaus_skew.rds
-#   --modeltwo models/gaus_skew/gaus_skew_hier_BCDG.rds -o tables/mods_comp/comp_skew_BCDG.csv -d data/CZ_all_mating_clean.csv
+# Rscript L.saxatilis-Mate-choice/scripts/mods_comp.R --modelone models/gaus_skew/SKEW/gaus_skew.rds \
+#   --modeltwo models/gaus_skew/BCDG_shore/gaus_skew_hier_BCDG_shore.rds --modelthree models/gaus_skew/BCDG_eco/gaus_skew_hier_BCDG_eco.rds \
+#   --modelfour models/gaus_skew/BCDG/gaus_skew_hier_BCDG.rds -d data/CZ_all_mating_clean.csv -o tables/mods_comp/comp_
 
 
 rm(list = ls())
@@ -26,6 +27,8 @@ option_list = list(
               help="third model for comparison", metavar="character"),
   make_option("--modelfour", type="character", default=NULL,
               help="fourth model for comparison", metavar="character"),
+  make_option("--nnhier", type="character", default=NULL,
+              help="non-hierarchical model for comparison", metavar="character"),
   make_option(c("-o", "--out"), type="character", default="mods_comp_out.csv",
               help="output file name [default = %default]", metavar="character"),
   make_option(c("-d", "--data"), type="character", default=NULL,
@@ -50,18 +53,19 @@ mod1 = readRDS(opt$modelone)
 mod2 = readRDS(opt$modeltwo)
 mod3 = readRDS(opt$modelthree)
 mod4 = readRDS(opt$modelfour)
+nnhier = readRDS(opt$nnhier)
 
-out_comp_str = lapply(c(opt$modelone,opt$modeltwo,opt$modelthree,opt$modelfour), function(x) {
+out_comp_str = lapply(c(opt$modelone,opt$modeltwo,opt$modelthree,opt$modelfour,opt$nnhier), function(x) {
   modsplit = strsplit(strsplit(basename(x), "[.]")[[1]][1], split = "_")[[1]]
   return(modsplit[length(modsplit)])
 })
 
 # Extract pointwise log-likelihood and compute LOO
 log_lik_1 <- extract_log_lik(mod1, merge_chains = FALSE)
-# log_lik_2 <- extract_log_lik(gaus_all, merge_chains = FALSE)
 log_lik_2 <- extract_log_lik(mod2, merge_chains = FALSE)
 log_lik_3 <- extract_log_lik(mod3, merge_chains = FALSE)
 log_lik_4 <- extract_log_lik(mod4, merge_chains = FALSE)
+log_lik_nnhier <- extract_log_lik(nnhier, merge_chains = FALSE)
 
 # provide relative effective sample sizes
 r_eff <- relative_eff(exp(log_lik_1))
@@ -97,6 +101,13 @@ print(loo_4)
 out_mod4 = paste0(dirname(opt$out), "/loo_", strsplit(basename(opt$modelfour), "[.]")[[1]][1], ".csv")
 write.table(round(loo_4$estimates, 2), out_mod4, sep = ",", row.names = TRUE, col.names = TRUE)
 
+r_eff_nnhier <- relative_eff(exp(log_lik_nnhier))
+loo_nnhier <- loo(log_lik_nnhier, r_eff = r_eff_nnhier, cores = 4, save_psis = TRUE)
+print(paste0("LOO results for model ", basename(opt$nnhier)))
+print(loo_nnhier)
+out_modnnhier = paste0(dirname(opt$out), "/loo_", strsplit(basename(opt$nnhier), "[.]")[[1]][1], ".csv")
+write.table(round(loo_nnhier$estimates, 2), out_modnnhier, sep = ",", row.names = TRUE, col.names = TRUE)
+
 print(paste0("Parameters in model ", basename(opt$modelone)))
 mod1@model_pars
 print(paste0("Parameters in model ", basename(opt$modeltwo)))
@@ -105,6 +116,8 @@ print(paste0("Parameters in model ", basename(opt$modelthree)))
 mod3@model_pars
 print(paste0("Parameters in model ", basename(opt$modelfour)))
 mod4@model_pars
+print(paste0("Parameters in non-hierarchical model ", basename(opt$nnhier)))
+nnhier@model_pars
 
 # plot(loo_2, label_points = TRUE)
 comp1_2 <- compare(loo_1, loo_2)
@@ -167,20 +180,20 @@ se_elpd_diff34 = comp3_4[2]
 write.table(data.frame(elpd_diff34, se_elpd_diff34), file = paste0("tables/mods_comp/comp_", out_comp_str[[3]], "_", out_comp_str[[4]], ".csv"),
             row.names = FALSE, col.names = TRUE, sep = ",")
 
-y_rep_mod1 = summary(mod1, pars = c("y_rep"))$summary[,'mean']
-roc_obj_mod1 = roc(CZ_data$mountYNcontact, y_rep_mod1, ci = TRUE)
-cat(paste0("Area under the curve and 95% CI for ", basename(opt$modelone), ".\n"))
-auc(roc_obj_mod1)
-ci.auc(roc_obj_mod1)
-
-y_rep_mod2 = summary(mod2, pars = c("y_rep"))$summary[,'mean']
-roc_obj_mod2 = roc(CZ_data$mountYNcontact, y_rep_mod2, ci = TRUE)
-cat(paste0("Area under the curve and 95% CI for ", basename(opt$modeltwo), ".\n"))
-auc(roc_obj_mod2)
-ci.auc(roc_obj_mod2)
-
-cat(paste0("Bootstrap test for ROC comparison between ", basename(opt$modelone), " and ", basename(opt$modeltwo), ".\n"))
-roc.test(roc_obj_mod1, roc_obj_mod2, method = "bootstrap")
+# y_rep_mod1 = summary(mod1, pars = c("y_rep"))$summary[,'mean']
+# roc_obj_mod1 = roc(CZ_data$mountYNcontact, y_rep_mod1, ci = TRUE)
+# cat(paste0("Area under the curve and 95% CI for ", basename(opt$modelone), ".\n"))
+# auc(roc_obj_mod1)
+# ci.auc(roc_obj_mod1)
+#
+# y_rep_mod2 = summary(mod2, pars = c("y_rep"))$summary[,'mean']
+# roc_obj_mod2 = roc(CZ_data$mountYNcontact, y_rep_mod2, ci = TRUE)
+# cat(paste0("Area under the curve and 95% CI for ", basename(opt$modeltwo), ".\n"))
+# auc(roc_obj_mod2)
+# ci.auc(roc_obj_mod2)
+#
+# cat(paste0("Bootstrap test for ROC comparison between ", basename(opt$modelone), " and ", basename(opt$modeltwo), ".\n"))
+# roc.test(roc_obj_mod1, roc_obj_mod2, method = "bootstrap")
 
 # Marginal posterior predictive checks
 # y_rep1 = rstan::extract(mod1, pars = 'y_rep', permuted = TRUE)$y_rep
