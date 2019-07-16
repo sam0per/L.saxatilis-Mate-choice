@@ -5,9 +5,9 @@
 
 rm(list = ls())
 
-.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
-              "bbmle", "loo", "ggpubr", "cowplot", "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel",
-              "rstantools", "optparse", "pROC")
+.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot",
+              "loo", "purrr", "reshape2", "arm", "parallel",
+              "rstantools", "optparse")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -18,41 +18,41 @@ lapply(.packages, require, character.only=TRUE)
 
 
 option_list = list(
+  make_option("--focus", type="character", default=NULL,
+              help="model that is compared against the others", metavar="character"),
   make_option("--modelone", type="character", default=NULL,
-              help="first model for comparison", metavar="character"),
+              help="a model for comparison", metavar="character"),
   make_option("--modeltwo", type="character", default=NULL,
-              help="second model for comparison", metavar="character"),
+              help="a second model for comparison", metavar="character"),
   make_option("--modelthree", type="character", default=NULL,
-              help="third model for comparison", metavar="character"),
+              help="a third model for comparison", metavar="character"),
   make_option("--modelfour", type="character", default=NULL,
-              help="fourth model for comparison", metavar="character"),
-  make_option("--nnhier", type="character", default=NULL,
-              help="non-hierarchical model for comparison", metavar="character"),
-  make_option(c("-o", "--out"), type="character", default="mods_comp_out.csv",
-              help="output file name [default = %default]", metavar="character"),
+              help="a fourth model for comparison", metavar="character"),
+  make_option(c("-o", "--outdir"), type="character", default="./",
+              help="output saved in current working directory [default = %default]", metavar="character"),
   make_option(c("-d", "--data"), type="character", default=NULL,
               help="input data", metavar="character"))
 
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
-if (is.null(opt$modelone) | is.null(opt$modeltwo) | is.null(opt$data)) {
+if (is.null(opt$modelone) | is.null(opt$focus)) {
   print_help(opt_parser)
-  stop("At least three arguments must be supplied (two models and one dataset).\n", call.=FALSE)
+  stop("At least two arguments must be supplied (the focus model and one model for comparison).\n", call.=FALSE)
 }
 
 ########################################################
 ###### approximate leave-one-out cross-validation ######
 # http://mc-stan.org/loo/articles/loo2-with-rstan.html #
 ########################################################
-CZ_data = read.csv(opt$data, sep = ";")
+# CZ_data = read.csv(opt$data, sep = ";")
 # mod1 = readRDS("models/gaus_skew/gaus_skew.rds")
+focus = readRDS(opt$focus)
 mod1 = readRDS(opt$modelone)
 # mod2 = readRDS("models/gaus_skew/gaus_skew_hier_BCDG_shore.rds")
 mod2 = readRDS(opt$modeltwo)
 mod3 = readRDS(opt$modelthree)
 mod4 = readRDS(opt$modelfour)
-nnhier = readRDS(opt$nnhier)
 
 out_comp_str = lapply(c(opt$modelone,opt$modeltwo,opt$modelthree,opt$modelfour,opt$nnhier), function(x) {
   modsplit = strsplit(strsplit(basename(x), "[.]")[[1]][1], split = "_")[[1]]

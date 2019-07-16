@@ -25,7 +25,7 @@ option_list = list(
   make_option(c("-c", "--chains"), type = "integer", default = 4,
               help = "number of MCMC chains [default: %default]", metavar = "integer"),
   make_option(c("-p", "--predictors"), type = "character", default = NULL,
-              help = "select predictors of the model matrix [all, shore, ecotype, sex]", metavar = "character"),
+              help = "select predictors of the model matrix [all, shore, ecotype, sex, islsex]", metavar = "character"),
   make_option(c("-m", "--modhyp"), type = "character", default = NULL,
               help = "choose which parameter to transform into hyper [b_par, c_par, d_par, alpha_par]", metavar = "character"),
   make_option(c("-o", "--output"), type = "character", default = "output",
@@ -60,13 +60,19 @@ if (pred_mx == "all") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)[,-1]
 } else if (pred_mx == "sex") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex, data = CZ_data)[,-1]
+} else if (pred_mx == "islsex") {
+  CZ_matrix = model.matrix(mountYNcontact ~ shore + test_sex, data = CZ_data)[,-1]
 } else {
   print("Model matrix is missing")
 }
 
 dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
            X = CZ_matrix, K = dim(CZ_matrix)[2])
-hier_hyp_px = substr(opt$modhyp,1,2)
+if (grepl(pattern = "alpha", x = opt$modhyp)) {
+  hier_hyp_px = substr(opt$modhyp,1,6)
+} else {
+  hier_hyp_px = substr(opt$modhyp,1,2)
+}
 # hier_hyp_px = substr("b_par",1,2)
 if (hier_hyp_px=="b_") {
   start_val = list(list(b_intercept=0.4, b_coeff=rep(0,ncol(CZ_matrix)), c_par=-0.17, d_par=0.85, alpha_par=2.32),
