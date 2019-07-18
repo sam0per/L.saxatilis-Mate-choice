@@ -4,16 +4,12 @@
 #   -o gaus_skew/BCDG_shore/gaus_skew_hier_BCDG_shore
 
 rm(list = ls())
-
 .packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot")
-
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
-
 # Load packages into session
 lapply(.packages, require, character.only=TRUE)
-
 
 option_list = list(
   make_option(c("-d", "--data"), type="character", default=NULL,
@@ -49,7 +45,8 @@ pred_mx = opt$predictors
 # stan hierarchical model with skewness #
 #########################################
 rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
+options(mc.cores = opt$chains)
+# options(mc.cores = parallel::detectCores(logical = FALSE) - 15)
 # options(mc.cores = parallel::detectCores(logical = FALSE) - 2)
 
 if (pred_mx == "all") {
@@ -57,9 +54,10 @@ if (pred_mx == "all") {
 } else if (pred_mx == "shore") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)[,-1]
 } else if (pred_mx == "ecotype") {
-  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype, data = CZ_data)[,-1]
+  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + shape, data = CZ_data)[,-1]
 } else if (pred_mx == "sex") {
-  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex, data = CZ_data)[,-1]
+  CZ_matrix = matrix(model.matrix(mountYNcontact ~ test_sex, data = CZ_data)[,-1])
+  colnames(CZ_matrix) = "test_sexmale"
 } else if (pred_mx == "islsex") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + test_sex, data = CZ_data)[,-1]
 } else {
