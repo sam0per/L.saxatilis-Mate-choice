@@ -1,19 +1,52 @@
+rm(list = ls())
 .packages = c("ggplot2", "dplyr", "rstan", "tibble", "bayesplot", "purrr", "reshape2", "pracma")
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
 lapply(.packages, require, character.only=TRUE)
 
 CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+
 pref_out = "gaus_skew/Bhyp_shore/gaus_skew_hier_"
-pref_out = "gaus_skew/Bhyp_eco/gaus_skew_hier_"
-pref_out = "gaus_skew/Bhyp_islsex/gaus_skew_hier_"
 pref_out = "gaus_skew/Chyp_shore/gaus_skew_hier_"
+pref_out = "gaus_skew/Dhyp_shore/gaus_skew_hier_"
+pref_out = "gaus_skew/ALPHAhyp_shore/gaus_skew_hier_"
+
+pref_out = "gaus_skew/Bhyp_eco/gaus_skew_hier_"
 pref_out = "gaus_skew/Chyp_eco/gaus_skew_hier_"
 
+pref_out = "gaus_skew/Bhyp_islsex/gaus_skew_hier_"
+
+
 gaus_skew = readRDS(paste0("models/", pref_out, basename(dirname(pref_out)),".rds"))
+# gaus_skew@model_pars
 CZ_data$stan_yhat = summary(gaus_skew, pars = c("y_hat"))$summary[,'mean']
 CZ_data$stan_yhat_uci = summary(gaus_skew, pars = c("y_hat"))$summary[,'97.5%']
 CZ_data$stan_yhat_lci = summary(gaus_skew, pars = c("y_hat"))$summary[,'2.5%']
+hyp_isl = tibble(size_ratio = CZ_data$size_ratio, shore = CZ_data$shore, ref_ecotype = CZ_data$ref_ecotype,
+                 stan_yhat = CZ_data$stan_yhat, stan_yhat_lci = CZ_data$stan_yhat_lci,
+                 stan_yhat_uci = CZ_data$stan_yhat_uci, hyp = "b-only-island")
+hyp_isl = rbind(hyp_isl,
+                tibble(size_ratio = CZ_data$size_ratio, shore = CZ_data$shore, ref_ecotype = CZ_data$ref_ecotype,
+                       stan_yhat = CZ_data$stan_yhat, stan_yhat_lci = CZ_data$stan_yhat_lci,
+                       stan_yhat_uci = CZ_data$stan_yhat_uci, hyp = "a-only-island"))
+table(hyp_isl$hyp)
+factor(hyp_isl$hyp)
+# hyp_isl[hyp_isl$hyp=='hyperparameter b', ]$hyp = "b-only-island"
+pdf(paste0("figures/gaus_skew/one_only_hyp_shore_fit.pdf"), width=8, height=6)
+ggplot(data = hyp_isl, aes(x = size_ratio, y = stan_yhat)) +
+  facet_wrap(~hyp) +
+  geom_line(aes(col=shore), size=1.5) +
+  # geom_line(aes(x = size_ratio, y = stan_yhat_lci), alpha=0.5, linetype = "dashed") +
+  # geom_line(aes(x = size_ratio, y = stan_yhat_uci), alpha=0.5, linetype = "dashed")
+  geom_ribbon(aes(x = size_ratio, ymin = stan_yhat_lci, ymax = stan_yhat_uci, fill = shore), alpha=0.1) +
+  labs(x="ln female size - ln male size", y="probability of mating", col="", fill ="") +
+  scale_x_continuous(breaks = seq(-1.5,1.5,0.5)) +
+  theme(legend.text = element_text(size = 15,face = "bold"),
+        legend.position = "top",
+        axis.title = element_text(face = "bold", size = 15),
+        strip.text = element_text(face="bold", size=13),
+        strip.background = element_rect(fill="lightblue", colour="black",size=1))
+dev.off()
 
 colnames(CZ_data)
 pdf(paste0("figures/", pref_out, basename(dirname(pref_out)),"_fit.pdf"), width=8, height=7)
