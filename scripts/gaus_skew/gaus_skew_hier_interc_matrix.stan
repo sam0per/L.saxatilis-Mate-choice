@@ -1,7 +1,8 @@
 data {
   int<lower=0> N;
-  int<lower=0> K;
-  matrix[N, K] X;
+  //int<lower=0> K;
+  //matrix[N, K] X;
+  vector[N] X;
   vector[N] ratio;
   int<lower=0, upper=1> y[N];
 }
@@ -14,7 +15,7 @@ parameters {
   //vector[K] alpha_coeff;
   //vector[K] b_coeff;
   //vector[K] c_coeff;
-  vector[K] d_coeff;
+  real d_coeff;
   real<lower=0, upper=1> b_par;
   real<lower=-10, upper=10> c_par;
   //real<lower=0.0001, upper=10> d_par;

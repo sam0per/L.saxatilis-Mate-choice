@@ -38,7 +38,7 @@ if (is.null(opt$data) | is.null(opt$stanfile) | is.null(opt$iterations)) {
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 CZ_data = read.csv(opt$data, sep = ";")
 pref_out = opt$output
-# pref_out = "gaus_skew/B_all/gaus_skew_hier_B_all"
+# pref_out = "gaus_skew/Dhyp_sex/gaus_skew_hier_Dhyp_sex"
 pred_mx = opt$predictors
 
 #########################################
@@ -64,14 +64,13 @@ if (pred_mx == "all") {
   print("Model matrix is missing")
 }
 
-dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
-           X = CZ_matrix, K = dim(CZ_matrix)[2])
+
 if (grepl(pattern = "alpha", x = opt$modhyp)) {
   hier_hyp_px = substr(opt$modhyp,1,6)
 } else {
   hier_hyp_px = substr(opt$modhyp,1,2)
 }
-# hier_hyp_px = substr("b_par",1,2)
+# hier_hyp_px = substr("d_par",1,2)
 if (hier_hyp_px=="b_") {
   start_val = list(list(b_intercept=0.4, b_coeff=rep(0,ncol(CZ_matrix)), c_par=-0.17, d_par=0.85, alpha_par=2.32),
                    list(b_intercept=0.4, b_coeff=rep(0,ncol(CZ_matrix)), c_par=-0.17, d_par=0.85, alpha_par=2.32),
@@ -94,15 +93,22 @@ if (hier_hyp_px=="b_") {
                    list(alpha_intercept=2.32, alpha_coeff=rep(0,ncol(CZ_matrix)), b_par=0.4, c_par=-0.17, d_par=0.85))
 }
 
+if (dim(CZ_matrix)[2] == 1) {
+  dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
+             X = CZ_matrix[,1])
+} else {
+  dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
+             X = CZ_matrix, K = dim(CZ_matrix)[2])
+}
 
 skew_hier = rstan::stan(file = opt$stanfile, data = dat, iter = opt$iterations, warmup = opt$iterations/4,
                         chains=opt$chains, refresh=opt$iterations, init = start_val,
                         control = list(adapt_delta = 0.95, max_treedepth = 15))
 
-# skew_hier = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_interc_matrix.stan",
-#                         data = dat, iter = 8000, warmup = 2000,
-#                         chains=4, refresh=8000, init = start_val,
-#                         control = list(adapt_delta = 0.95, max_treedepth = 15))
+skew_hier = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_interc_matrix.stan",
+                        data = dat, iter = 8000, warmup = 2000,
+                        chains=4, refresh=8000, init = start_val,
+                        control = list(adapt_delta = 0.95, max_treedepth = 15))
 
 
 cat("Saving", basename(pref_out), "Stan model file ...\n")
@@ -143,13 +149,45 @@ hyp_draws = lapply(paste0(hier_hyp_px, "coeff"), function(x) {
   hier_draws[[x]]
 })
 
-hyp_draws_dens = lapply(seq_along(colnames(CZ_matrix)), function(y) {
-  ggplot() +
-    geom_density(aes(x = hyp_draws[[1]][, y], y = ..scaled..), fill='red', col='black') +
-    labs(x="", title = paste0(hier_hyp_px, colnames(CZ_matrix)[y])) +
-    theme(axis.title = element_text(face = "bold", size = 14),
-          plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
-})
+if (ncol(CZ_matrix) == 1) {
+  coeff_parfig = lapply(seq_along(hier_coeff), function(x) {
+    ggplot() +
+      geom_density(aes(x = hier_draws[[x]], y = ..scaled..), fill='red', col='black') +
+      labs(x="", title = hier_coeff[x]) +
+      theme(axis.title = element_text(face = "bold", size = 14),
+            plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
+  })
+  lapply(seq_along(hier_coeff), function(y) {
+    cat("Saving density plot", paste0("figures/", pref_out, "_", hier_coeff[y], "_dens.png"), "...\n")
+    ggsave(filename = paste0("figures/", pref_out, "_", hier_coeff[y], "_dens.png"),
+           plot = coeff_parfig[[y]])
+  })
+} else {
+  hyp_draws_dens = lapply(seq_along(colnames(CZ_matrix)), function(y) {
+    ggplot() +
+      geom_density(aes(x = hyp_draws[[1]][, y], y = ..scaled..), fill='red', col='black') +
+      labs(x="", title = paste0(hier_hyp_px, colnames(CZ_matrix)[y])) +
+      theme(axis.title = element_text(face = "bold", size = 14),
+            plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
+  })
+  lapply(seq_along(colnames(CZ_matrix)), function(y) {
+    cat("Saving density plot", paste0("figures/", pref_out, "_", hier_hyp_px, colnames(CZ_matrix)[y], "_dens.png"), "...\n")
+    ggsave(filename = paste0("figures/", pref_out, "_", hier_hyp_px, colnames(CZ_matrix)[y], "_dens.png"),
+           plot = hyp_draws_dens[[y]])
+  })
+  coeff_parfig = lapply(hier_nnhyp, function(x) {
+    ggplot() +
+      geom_density(aes(x = hier_draws[[x]], y = ..scaled..), fill='red', col='black') +
+      labs(x="", title = x) +
+      theme(axis.title = element_text(face = "bold", size = 14),
+            plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
+  })
+  lapply(seq_along(hier_nnhyp), function(y) {
+    cat("Saving density plot", paste0("figures/", pref_out, "_", hier_nnhyp[y], "_dens.png"), "...\n")
+    ggsave(filename = paste0("figures/", pref_out, "_", hier_nnhyp[y], "_dens.png"),
+           plot = coeff_parfig[[y]])
+  })
+}
 
 # coeff_list = split(hier_coeff, ceiling(seq_along(hier_coeff)/length(colnames(CZ_matrix))))
 # names(coeff_list) = hier_pars
@@ -165,27 +203,6 @@ hyp_draws_dens = lapply(seq_along(colnames(CZ_matrix)), function(y) {
 #   colnames(coeff_draws[[x]]) = coeff_list[[x]]
 #   coeff_draws[[x]]
 # })
-
-coeff_parfig = lapply(hier_nnhyp, function(x) {
-  ggplot() +
-    geom_density(aes(x = hier_draws[[x]], y = ..scaled..), fill='red', col='black') +
-    labs(x="", title = x) +
-    theme(axis.title = element_text(face = "bold", size = 14),
-          plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
-})
-
-
-lapply(seq_along(colnames(CZ_matrix)), function(y) {
-  cat("Saving density plot", paste0("figures/", pref_out, "_", hier_hyp_px, colnames(CZ_matrix)[y], "_dens.png"), "...\n")
-  ggsave(filename = paste0("figures/", pref_out, "_", hier_hyp_px, colnames(CZ_matrix)[y], "_dens.png"),
-         plot = hyp_draws_dens[[y]])
-})
-lapply(seq_along(hier_nnhyp), function(y) {
-  cat("Saving density plot", paste0("figures/", pref_out, "_", hier_nnhyp[y], "_dens.png"), "...\n")
-  ggsave(filename = paste0("figures/", pref_out, "_", hier_nnhyp[y], "_dens.png"),
-         plot = coeff_parfig[[y]])
-})
-
 
 posterior = as.array(skew_hier)
 # dim(posterior)

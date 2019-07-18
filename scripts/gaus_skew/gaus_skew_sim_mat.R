@@ -156,7 +156,14 @@ sim_mat = function(pos, isl) {
     fem = fml_dtr[f]
     while (!success) {
       # m = sample(ml_dtr, 1, replace = FALSE)
-      m = fem + rnorm(n=1, mean=0, sd=1.5)
+      mpos = pos + rnorm(n=1, mean=0, sd=1.5)
+      m = as.numeric(cline_2c3s(position = mpos, sex = "male",
+                                cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
+                                wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
+                                crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
+                                zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
+                                sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
+                                sw = CZ_cline_params["sw", isl])[,"z_x"])
       p = 0.01 + skew_pars["b","mean"] * exp(-0.5 * (((fem - m) - skew_pars["c","mean"])
                                                      / skew_pars["d","mean"])^2) *
         (1 + erf(skew_pars["alpha","mean"] * ((fem - m) - skew_pars["c","mean"]) / (1.414214 * skew_pars["d","mean"])))
