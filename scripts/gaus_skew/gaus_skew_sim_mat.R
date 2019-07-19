@@ -27,7 +27,7 @@ if (is.null(opt$data) | is.null(opt$modelpars) | is.null(opt$clinepars)) {
 }
 
 CZ_data = read.csv(opt$data, sep = ";")
-skew_pars = read.csv(opt$modelpars, sep = ",")
+skew_pars = read.csv(opt$modelpars, sep = ";")
 skew_pars = column_to_rownames(skew_pars, var = "parameter")
 CZ_cline_params = read.csv(opt$clinepars, row.names = 1)
 pref_out = opt$output
