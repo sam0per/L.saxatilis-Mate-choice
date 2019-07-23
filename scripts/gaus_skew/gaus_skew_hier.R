@@ -64,7 +64,6 @@ if (pred_mx == "all") {
   print("Model matrix is missing")
 }
 
-
 if (grepl(pattern = "alpha", x = opt$modhyp)) {
   hier_hyp_px = substr(opt$modhyp,1,6)
 } else {
@@ -105,10 +104,10 @@ skew_hier = rstan::stan(file = opt$stanfile, data = dat, iter = opt$iterations, 
                         chains=opt$chains, refresh=opt$iterations, init = start_val,
                         control = list(adapt_delta = 0.95, max_treedepth = 15))
 
-skew_hier = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_interc_matrix.stan",
-                        data = dat, iter = 8000, warmup = 2000,
-                        chains=4, refresh=8000, init = start_val,
-                        control = list(adapt_delta = 0.95, max_treedepth = 15))
+# skew_hier = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_interc_matrix.stan",
+#                         data = dat, iter = 8000, warmup = 2000,
+#                         chains=4, refresh=8000, init = start_val,
+#                         control = list(adapt_delta = 0.95, max_treedepth = 15))
 
 
 cat("Saving", basename(pref_out), "Stan model file ...\n")
