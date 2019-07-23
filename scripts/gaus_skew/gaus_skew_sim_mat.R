@@ -1,13 +1,17 @@
 rm(list = ls())
 
-devtools::install_github("thomasp85/patchwork")
+# devtools::install_github("thomasp85/patchwork")
+.packagesdev = "thomasp85/patchwork"
 .packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr",
-              "pracma", "rgl", "parallel", "Rmisc", "patchwork")
+              "pracma", "rgl", "parallel", "Rmisc")
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
+.instdev <- basename(.packagesdev) %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
+if(length(.packagesdev[!.instdev]) > 0) devtools::install_github(.packagesdev[!.instdev])
 # Load packages into session
 lapply(.packages, require, character.only=TRUE)
+lapply(basename(.packagesdev), require, character.only=TRUE)
 
 option_list = list(
   make_option(c("-d", "--data"), type="character", default=NULL,
