@@ -77,13 +77,6 @@ cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc
   return(phen_cline)
 }
 # islands = "CZB"
-# cline_2c3s(position = 3, sex = "female",
-#            cl = CZ_cline_params["cl", islands], cr = CZ_cline_params["cr", islands],
-#            wl = exp(CZ_cline_params["lwl", islands]), wr = exp(CZ_cline_params["lwr", islands]),
-#            crab = CZ_cline_params["crab", islands], wave = CZ_cline_params["wave", islands],
-#            zs_c = CZ_cline_params["zs_c", islands], zs_w = CZ_cline_params["zs_w", islands],
-#            sc = CZ_cline_params["sc", islands], sh = CZ_cline_params["sh", islands],
-#            sw = CZ_cline_params["sw", islands])
 islands = as.character(unique(CZ_data$shore))
 
 CZs_phen_cline = lapply(islands, function(x) {
@@ -111,8 +104,6 @@ CZs_bin_cline = lapply(CZs_phen_cline, function(r) {
   bin_dt = cbind(r, bin)
   log_len_m = aggregate(bin_dt[, c("log_len", "position")], list(bin_dt$bin, bin_dt$sex), CI)
   log_len_m = mutate(log_len_m, figure = "cline")
-  # log_len_uCI = aggregate(bin_dt[, "log_len"], list(bin_dt$bin, bin_dt$sex), CI)
-  # log_len_lCI = aggregate(bin_dt[, "log_len"], list(bin_dt$bin, bin_dt$sex), CI)['lower']
   return(log_len_m)
   })
 
@@ -154,7 +145,6 @@ isl_pos = sapply(islands, function(x) {
 sim_mat = function(pos, isl, run) {
   bar = list()
   YN = data.frame()
-
   # smp_pos = seq(round(pos)-2,round(pos)+2)
   # smp_pos_m = smp_pos + dnorm(x = 1, mean = 0, sd = 1.5)
   # fml_df = rbindlist(lapply(seq_along(smp_pos), function(z) {
@@ -163,7 +153,6 @@ sim_mat = function(pos, isl, run) {
   # ml_df = rbindlist(lapply(seq_along(smp_pos), function(z) {
   #   data$male[round(data$male$position)==smp_pos[z], ]
   # }))
-
   # fml_m = mean(CZ_sim_sex$female[round(CZ_sim_sex$female$position)==seq(round(pos)-1,round(pos)+1), ]$z_x)
   # fml_sd = mean(CZ_sim_sex$female[round(CZ_sim_sex$female$position)==c(round(pos)-1,round(pos),round(pos)+1), ]$s_x)
   # fml_m = mean(fml_df$z_x)
@@ -174,7 +163,6 @@ sim_mat = function(pos, isl, run) {
                                 zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
                                 sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
                                 sw = CZ_cline_params["sw", isl])[,"z_x"])
-  # fml_sd = mean(fml_df$s_x)
   fml_sd = as.numeric(cline_2c3s(position = pos, sex = "female",
                                  cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
                                  wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
@@ -182,21 +170,7 @@ sim_mat = function(pos, isl, run) {
                                  zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
                                  sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
                                  sw = CZ_cline_params["sw", isl])[,"s_x"])
-  # ml_m = mean(ml_df$z_x)
-  # ml_m = fml_m + rnorm(n=1,mean=0,sd=1.5)
-  # ml_sd = mean(ml_df$s_x)
-
-  # if (fml_sd > 0.4) {
-  #   fml_dtr = rnorm(n = 1000, mean = fml_m, sd = log(1.5))
-  # } else {
   fml_dtr = rnorm(n = 1000, mean = fml_m, sd = fml_sd)
-  # }
-  # if (ml_sd > 0.4) {
-  #   ml_dtr = rnorm(n = 1000, mean = ml_m, sd = log(1.5))
-  # } else {
-  #   ml_dtr = rnorm(n = 1000, mean = ml_m, sd = ml_sd)
-  # }
-  
   for (f in seq_along(fml_dtr)) {
     success=FALSE
     i=1
@@ -318,23 +292,9 @@ map(1:numrun, function(n) {
 #   })
 # })
 
-######################
-# assortative mating #
-######################
-# rm(list = ls())
-# option_list = list(
-#   make_option(c("-d", "--data"), type="character", default=NULL,
-#               help="input data", metavar="character"),
-#   make_option(c("-o", "--output"), type = "character", default = "output_sim",
-#               help = "directory for output files [default: %default]", metavar = "character"))
-# opt_parser = OptionParser(option_list=option_list)
-# opt = parse_args(opt_parser)
-# CZ_data = read.csv(opt$data, sep = ";")
-# CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
-# islands = as.character(unique(CZ_data$shore))
-# pref_out = opt$output
-# pref_out = "gaus_skew/SKEW/sims/"
-
+########################
+# mating summary stats #
+########################
 CZs_join_runs = function(isls, pos) {
   run_fl = list.files(path = paste0("tables/", pref_out, "stats"), pattern = paste0(isls, "_", pos, "_"),
                       full.names = TRUE)
@@ -389,7 +349,7 @@ CZ_am_ss_fig = lapply(seq_along(islands), function(i) {
 #   return(cbind(cz_dat, male_mx=rep(cz_dat$male[p_ss_idx], nrow(cz_dat)), male_av=rep(mean(cz_dat$male), nrow(cz_dat)),
 #                dss=rep(dir_ss, nrow(cz_dat)), sss=rep(sta_ss, nrow(cz_dat)), pss=fitted(ss_mod)))
 # }
-# 
+#
 # CZs_am_ss = lapply(seq_along(islands), function(i) {
 #   lapply(seq_along(CZs_am_df[[i]]), function(d) {
 #     CZs_ss_poss = possibly(CZs_ss, otherwise = data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(),
@@ -401,12 +361,12 @@ CZ_am_ss_fig = lapply(seq_along(islands), function(i) {
 #     CZs_ss_poss(cz_dat = CZs_am_df[[i]][[d]])
 #   })
 # })
-# 
+#
 # CZ_am_fun = function(data, isls) {
 #   CZ_clcr = rbindlist(data[[isls]])
 #   return(CZ_clcr)
 # }
-# 
+#
 # CZ_am_tot = lapply(seq_along(islands), function(i) {
 #   CZ_am_fun(data = CZs_am_ss, isls = i)
 # })
@@ -425,16 +385,23 @@ CZ_am_ss_fig = lapply(seq_along(islands), function(i) {
 #   df4fig = rbind(am4fig, dss4fig, sss4fig)
 #   return(distinct(df4fig))
 # })
+
+#########################
+# figures summary stats #
+#########################
 cat("Preparing dataset for figure of the mating summary statistics ...\n")
-CZ_ss_fig = lapply(CZ_am_ss_fig, function(x) {
-  x[x$figure!='AM', ]
+CZ_dss_fig = lapply(CZ_am_ss_fig, function(x) {
+  x[x$figure=='DSS', ]
+})
+CZ_sss_fig = lapply(CZ_am_ss_fig, function(x) {
+  x[x$figure=='SSS', ]
 })
 CZ_am_fig = lapply(CZ_am_ss_fig, function(x) {
   x[x$figure=='AM', ]
 })
-CZs_cline_ss_plot = lapply(seq_along(islands), function(pl) {
+CZs_cline_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZs_phen_cline[[pl]]) +
-    facet_wrap(~figure, nrow = 3, scales = "free") +
+    facet_wrap(~figure, nrow = 1) +
     geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
     geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
     scale_color_manual(values = c("red", "blue")) +
@@ -445,18 +412,42 @@ CZs_cline_ss_plot = lapply(seq_along(islands), function(pl) {
                                                   ymax=log_len[, 'upper']), alpha=0.4, width=2) +
     geom_point(data = CZs_bin_cline[[pl]], aes(x = CZs_bin_cline[[pl]]$position[, 'mean'],
                                                y = CZs_bin_cline[[pl]]$log_len[, 'mean'],
-                                               col=CZs_bin_cline[[pl]]$Group.2)) +
-    geom_line(aes(position, z_x, col=sex), size=1.3, alpha=0.7) +
-    geom_errorbar(data = CZ_ss_fig[[pl]], aes(x=position,
-                                              ymin=low_val,
-                                              ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(data = CZ_ss_fig[[pl]], aes(x = position, y = mean_val)) +
-    labs(x = paste0(islands[pl], " shore position"), y = '', fill='', col='') +
+                                               col=CZs_bin_cline[[pl]]$Group.2), size=0.7) +
+    geom_line(aes(position, z_x, col=sex), size=1.1, alpha=0.7) +
+    labs(x = '', y = 'ln size', fill='', col='') +
     theme(legend.position = 'top',
           strip.text = element_text(face="bold", size=13),
-          strip.background = element_rect(fill="lightblue", colour="black",size=1),
-          legend.text = element_text(size = 15, face = "bold"),
-          axis.title = element_text(face = "bold", size = 15))
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          legend.text = element_text(size = 13),
+          axis.title.y = element_text(face = "bold", size = 9))
+})
+CZs_dss_plot = lapply(seq_along(islands), function(pl) {
+  ggplot(data = CZ_dss_fig[[pl]]) +
+    facet_wrap(~figure, nrow = 1) +
+    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
+    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
+    geom_point(aes(x = position, y = mean_val), size=0.7) +
+    geom_line(aes(x = position, y = mean_val), size=0.7) +
+    labs(x = '', y = paste0('mated males - all males\n(mean size)')) +
+    ylim(c(-0.2, 0.2)) +
+    theme(strip.text = element_text(face="bold", size=12),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          axis.title.y = element_text(face = "bold", size = 9))
+})
+CZs_sss_plot = lapply(seq_along(islands), function(pl) {
+  ggplot(data = CZ_sss_fig[[pl]]) +
+    facet_wrap(~figure, nrow = 1) +
+    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
+    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
+    geom_point(aes(x = position, y = mean_val), size=0.7) +
+    geom_line(aes(x = position, y = mean_val), size=0.7) +
+    labs(x = '', y = paste0('mated males - all males\n(variance size)')) +
+    ylim(c(-0.1, 0.1)) +
+    theme(strip.text = element_text(face="bold", size=12),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          axis.title.y = element_text(face = "bold", size = 9))
 })
 CZs_am_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_am_fig[[pl]]) +
@@ -464,51 +455,24 @@ CZs_am_plot = lapply(seq_along(islands), function(pl) {
     geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
     geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val)) +
+    geom_point(aes(x = position, y = mean_val), size=0.7) +
+    geom_line(aes(x = position, y = mean_val), size=0.7) +
     labs(x = paste0(islands[pl], " shore position"), y = 'r') +
     ylim(c(0,1)) +
-    theme(strip.text = element_text(face="bold", size=13),
-          strip.background = element_rect(fill="lightblue", colour="black",size=1),
-          legend.text = element_text(size = 15, face = "bold"),
-          axis.title = element_text(face = "bold", size = 15))
+    theme(strip.text = element_text(face="bold", size=12),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          axis.title.y = element_text(face = "bold", size = 9),
+          axis.title.x = element_text(face = "bold"))
 })
 CZs_cline_am_ss_plot = lapply(seq_along(islands), function(x) {
-  CZs_cline_ss_plot[[x]] + CZs_am_plot[[x]] + plot_layout(ncol = 1, heights = c(4,1))
+  CZs_cline_plot[[x]] + CZs_dss_plot[[x]] + CZs_sss_plot[[x]] + CZs_am_plot[[x]] + plot_layout(ncol = 1, heights = c(2,2,2,2))
 })
-
 lapply(seq_along(islands), function(s) {
   cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.png"), "...\n")
   ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.png"),
          plot = CZs_cline_am_ss_plot[[s]])
 })
 
-# CZ_am_ss_2_fig = read.csv("tables/gaus_skew/SKEW/sims2_amss/CZA_am_ss_pars.csv")
-# CZ_am_ss_1_fig = CZ_am_ss_fig[[1]]
-# pdf("misc/CZA_2sims_comp.pdf", width = 7, height = 7)
-# ggplot(data = CZ_am_ss_1_fig) +
-#   facet_grid(rows = vars(figure), scales = "free") +
-#   geom_point(aes(x = position, y = par_value), col="black") +
-#   geom_point(data = CZ_am_ss_2_fig, aes(x = position, y = par_value), col="orange") +
-#   labs(x="CZA shore position")
-# dev.off()
-# 
-# CZ_am_plot = function(data, x, y, yy, isls) {
-#   am_pl = ggplot(data = data, aes(x, y)) +
-#     geom_point(alpha=0.4) +
-#     geom_point(aes(x, yy), col="red", alpha=0.2) +
-#     geom_point(aes(x, am_cor), col="purple", size=2.5) +
-#     # geom_point(aes(x, male_mx), col="green", size=2.5) +
-#     # geom_point(aes(x, male_av), col="blue", size=2.5) +
-#     labs(x = "position", y = "ln size", title = isls)
-#   ggsave(filename = paste0("figures/gaus_skew/SKEW/ass_mat/", isls, "_sim_am.png"), plot = am_pl)
-# }
-# 
-# lapply(seq_along(islands), function(i) {
-#   CZ_am_plot(data = CZ_am_tot[[i]], x = CZ_am_tot[[i]]$position, y = CZ_am_tot[[i]]$male,
-#              yy = CZ_am_tot[[i]]$female, isls = islands[i])
-# })
-# 
-# 
 # ############
 # # 3D plots #
 # ############
@@ -534,7 +498,7 @@ lapply(seq_along(islands), function(s) {
 # }, mc.cores = 4)
 # lapply(CZ_sim_grid, head)
 # # plot(CZ_sim_grid[[1]]$position, CZ_sim_grid[[1]]$sratio)
-# 
+#
 # # CZ_am_Y = split(CZ_am_tot[[1]], CZ_am_tot[[1]]$mountYN)$`1`
 # # CZ_am_Y = CZ_am_tot[[1]]
 # # CZ_am_Y = sample_n(tbl = CZ_am_Y, size = 1000, replace = FALSE)
@@ -556,7 +520,7 @@ lapply(seq_along(islands), function(s) {
 # # plot(df_grid$x, df_grid$y)
 # # plot(pp20$x, pp20$y)
 # # head(CZ_am_Y)
-# 
+#
 # # df_merge <- na.omit(merge(CZ_am_Y, df_grid, by = c("x", "y"), all = TRUE))
 # # plot(df_merge$x, df_merge$y)
 # # nrow(na.omit(df_merge))
@@ -565,16 +529,16 @@ lapply(seq_along(islands), function(s) {
 # #   df_merge$xx[i] = df_merge$x[i] - i_rest
 # #   print(df_merge$xx[i])
 # # }
-# 
+#
 # # head(na.omit(df_merge))
 # # plot(df_merge$xx, df_merge$y)
 # # CZ_sim_grid = CZ_am_tot
-# 
+#
 # # CZ_sim_grid = lapply(seq_along(islands), function(sp) {
 # #   CZ_sim_grid[[sp]]$male = round(CZ_sim_grid[[sp]]$male, 1)
 # #   return(CZ_sim_grid[[sp]])
 # # })
-# 
+#
 # df_am = lapply(seq_along(islands), function(sp) {
 #   split(CZ_sim_grid[[sp]], CZ_sim_grid[[sp]]$mountYN)$`1`
 # }) %>%
@@ -593,12 +557,12 @@ lapply(seq_along(islands), function(s) {
 #   df_am[[cc]] + geom_vline(xintercept = as.numeric(CZ_cline_params["cl", islands[cc]]), linetype="dotted", color = "black", size=1.5) +
 #   geom_vline(xintercept = as.numeric(CZ_cline_params["cr", islands[cc]]), linetype="dotted", color = "black", size=1.5)
 # })
-# 
+#
 # lapply(seq_along(islands), function(sv) {
 #   ggsave(filename = paste0("figures/", pref_out, islands[sv], "_sim_am_grid.png"), plot = df_am_c[[sv]])
 # })
-# 
-# 
+#
+#
 # df_ss = lapply(CZ_sim_grid, function(g) {
 #   group_by(g, xx, male)
 # }) %>%
@@ -629,15 +593,15 @@ lapply(seq_along(islands), function(s) {
 # lapply(seq_along(islands), function(sv) {
 #   ggsave(filename = paste0("figures/", pref_out, islands[sv], "_sim_ss_grid.png"), plot = df_ss_pl[[sv]])
 # })
-# 
-# 
+#
+#
 # # Missing values
 # # ggplot(df_merge, aes(x = xx, y = y)) +
 # #   geom_tile(data = subset(df_merge, !is.na(am_cor)), aes(fill = am_cor)) +
 # #   geom_tile(data = subset(df_merge,  is.na(am_cor)), aes(colour = "NA"),
 # #             linetype = 0, fill = "black", alpha = 0.5)
-# 
-# 
+#
+#
 # # ggplot(df_merge, aes(xx, y)) +
 # #   geom_raster(aes(fill = am_cor), interpolate = TRUE) +
 # #   scale_fill_viridis_c()
