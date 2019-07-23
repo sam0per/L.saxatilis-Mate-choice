@@ -1,7 +1,8 @@
 rm(list = ls())
 
+devtools::install_github("thomasp85/patchwork")
 .packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr",
-              "pracma", "rgl", "parallel", "Rmisc")
+              "pracma", "rgl", "parallel", "Rmisc", "patchwork")
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
 if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst])
@@ -15,6 +16,8 @@ option_list = list(
               help="mean estimates of the inferred parameters", metavar="character"),
   make_option(c("-c", "--clinepars"), type = "character", default = NULL,
               help = "cline parameter estimates", metavar = "character"),
+  make_option(c("-n", "--numrun"), type = "integer", default = 3,
+              help = "number of replicates for the full simulations [default: %default]", metavar = "integer"),
   make_option(c("-o", "--output"), type = "character", default = "output_sim",
               help = "directory for output files [default: %default]", metavar = "character"))
 
@@ -39,8 +42,11 @@ pref_out = opt$output
 # pref_out = "gaus_skew/SKEW/sims/"
 # pref_out = "gaus_skew/SKEW/sims2/"
 # pref_out = "gaus_skew/SKEW/sims10000/"
+# pref_out = "gaus_skew/SKEW/sims_test/"
 dir.create(file.path("tables", pref_out))
 dir.create(file.path("figures", pref_out))
+dir.create(file.path("tables", pref_out, "stats"))
+dir.create(file.path("figures", pref_out, "stats"))
 
 cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc, sh, sw) {
   # wl = exp(lwl)
@@ -77,6 +83,7 @@ cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc
 islands = as.character(unique(CZ_data$shore))
 
 CZs_phen_cline = lapply(islands, function(x) {
+  cat("Fitting size cline for", x, "...\n")
   phen_cline = cline_2c3s(position = CZ_data$LCmeanDist[CZ_data$shore==x], sex = CZ_data$test_sex[CZ_data$shore==x],
                           cl = CZ_cline_params["cl", x], cr = CZ_cline_params["cr", x],
                           wl = exp(CZ_cline_params["lwl", x]), wr = exp(CZ_cline_params["lwr", x]),
@@ -105,28 +112,29 @@ CZs_bin_cline = lapply(CZs_phen_cline, function(r) {
   return(log_len_m)
   })
 
-CZs_cline_plot = lapply(seq_along(islands), function(pl) {
-  ggplot(data = CZs_phen_cline[[pl]]) +
-    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
-    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
-    scale_color_manual(values = c("lightcoral", "black")) +
-    scale_fill_manual(values = c("lightcoral", "black")) +
-    geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x, fill=sex), alpha=0.15) +
-    geom_point(data = CZs_bin_cline[[pl]], aes(x = CZs_bin_cline[[pl]]$position[, 'mean'],
-                                               y = CZs_bin_cline[[pl]]$log_len[, 'mean'],
-                                               col=CZs_bin_cline[[pl]]$Group.2)) +
-    geom_line(aes(position, z_x, col=sex), size=1.3, alpha=0.7) +
-    labs(x = paste0(islands[pl], " shore position"), y = 'ln shell size', fill='', col='') +
-    theme(legend.position = 'top',
-          legend.text = element_text(size = 15, face = "bold"),
-          axis.title = element_text(face = "bold", size = 15))
-    # geom_errorbar(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), width=0.25)
-})
+# CZs_cline_plot = lapply(seq_along(islands), function(pl) {
+#   ggplot(data = CZs_phen_cline[[pl]]) +
+#     geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
+#     geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+#     scale_color_manual(values = c("lightcoral", "black")) +
+#     scale_fill_manual(values = c("lightcoral", "black")) +
+#     geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x, fill=sex), alpha=0.15) +
+#     geom_point(data = CZs_bin_cline[[pl]], aes(x = CZs_bin_cline[[pl]]$position[, 'mean'],
+#                                                y = CZs_bin_cline[[pl]]$log_len[, 'mean'],
+#                                                col=CZs_bin_cline[[pl]]$Group.2)) +
+#     geom_line(aes(position, z_x, col=sex), size=1.3, alpha=0.7) +
+#     labs(x = paste0(islands[pl], " shore position"), y = 'ln shell size', fill='', col='') +
+#     theme(legend.position = 'top',
+#           legend.text = element_text(size = 15, face = "bold"),
+#           axis.title = element_text(face = "bold", size = 15))
+# })
 # lapply(seq_along(islands), function(s) {
 #   ggsave(filename = paste0("figures/clines/", islands[s], "_size_sex.png"), plot = CZs_cline_plot[[s]])
 # })
 
 isl_pos = sapply(islands, function(x) {
+  cat("Chopping", x, "transect into equally-distanced shore positions from\nthe left centre",
+      CZ_cline_params["cl", x], "and the right centre", CZ_cline_params["cr", x], "...\n")
   isl_c = round(c(CZ_cline_params["cl", x], CZ_cline_params["cr", x]))
   isl_rng = range(CZ_data[CZ_data$shore==x, ]$LCmeanDist)
   # str(isl_rng)
@@ -136,8 +144,10 @@ isl_pos = sapply(islands, function(x) {
   return(c(wavel, crab, waver))
 })
 # lapply(isl_pos, length)
-# pos = 60
-sim_mat = function(pos, isl) {
+# pos = 9
+# isl = "CZA"
+# run = 2
+sim_mat = function(pos, isl, run) {
   bar = list()
   YN = data.frame()
 
@@ -175,7 +185,7 @@ sim_mat = function(pos, isl) {
   # if (fml_sd > 0.4) {
   #   fml_dtr = rnorm(n = 1000, mean = fml_m, sd = log(1.5))
   # } else {
-  fml_dtr = rnorm(n = 10000, mean = fml_m, sd = fml_sd)
+  fml_dtr = rnorm(n = 1000, mean = fml_m, sd = fml_sd)
   # }
   # if (ml_sd > 0.4) {
   #   ml_dtr = rnorm(n = 1000, mean = ml_m, sd = log(1.5))
@@ -187,6 +197,7 @@ sim_mat = function(pos, isl) {
     success=FALSE
     i=1
     fem = fml_dtr[f]
+    # fem = fml_dtr[2]
     while (!success) {
       # m = sample(ml_dtr, 1, replace = FALSE)
       mpos = pos + rnorm(n=1, mean=0, sd=1.5)
@@ -224,6 +235,16 @@ sim_mat = function(pos, isl) {
     bar[[f]] = YN
     YN = data.frame()
   }
+  bar = rbindlist(bar)
+  Ycor = with(data = bar[bar$mountYN==1, ], cor(female, male, method = "pearson"))
+  Ymean = with(data = bar[bar$mountYN==1, ], mean(male))
+  Yvar = with(data = bar[bar$mountYN==1, ], var(male))
+  YNmean = mean(bar$male)
+  YNvar = var(bar$male)
+  AM_SS = data.frame(am_r = Ycor, male_mated_mean = Ymean, male_mated_var = Yvar, male_all_mean = YNmean,
+                     male_all_var = YNvar)
+  write.table(AM_SS, file = paste0("tables/", pref_out, "stats/", isl, "_", round(pos), "_AM_SS_stats_", run, ".csv"),
+              append = TRUE, sep = ",", row.names = FALSE, col.names = FALSE)
   return(bar)
 }
 
@@ -251,19 +272,47 @@ sim_mat = function(pos, isl) {
 # CZs_right_plus = CZs_mate_sim(s = 1, centre = "cr", width = "lwr")
 # CZs_left_minus = CZs_mate_sim(s = -1, centre = "cl", width = "lwl")
 # CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
-
-map(seq_along(islands), function(x) {
-  map(isl_pos[[x]], function(y) {
-    cline_pos = y
-    write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-                file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
-                row.names = FALSE, col.names = TRUE)
-    simYN = possibly(sim_mat, otherwise = "Missing snails")
-    outYN = simYN(pos = cline_pos, isl = islands[x])
-    # return(outYN)
-    return(cat("island", islands[x], "at position", cline_pos, "has been simulated ...\n"))
+numrun = opt$numrun
+# numrun = 2
+map(1:numrun, function(n) {
+  cat("Running run number", n, "...\n")
+  map(seq_along(islands), function(x) {
+    map(isl_pos[[x]], function(y) {
+      cline_pos = y
+      write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
+                  file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
+                  row.names = FALSE, col.names = TRUE)
+      write.table(data.frame(am_r=as.numeric(), male_mated_mean=as.numeric(), male_mated_var=as.numeric(),
+                             male_all_mean=as.numeric(), male_all_var=as.numeric(), stringsAsFactors=FALSE),
+                  file = paste0("tables/", pref_out, "stats/", islands[x], "_", round(cline_pos),
+                                "_AM_SS_stats_", n, ".csv"), sep = ",", row.names = FALSE, col.names = TRUE)
+      simYN = possibly(sim_mat, otherwise = "Missing snails")
+      outYN = simYN(pos = cline_pos, isl = islands[x], run = n)
+      # return(outYN)
+      return(cat("island", islands[x], "at position", cline_pos, "has been simulated ...\n"))
+    })
   })
+  return(cat("*** All encounters have been simulated successfully! ***\n"))
 })
+# CZ_simYN = read.csv(paste0("tables/", pref_out, "CZA", "_", "9", "_sim_YN.csv"))
+# with(data = CZ_simYN[CZ_simYN$mountYN==1, ], cor(female, male, method = "pearson"))
+# with(data = CZ_simYN[CZ_simYN$mountYN==1, ], mean(male))
+# with(data = CZ_simYN[CZ_simYN$mountYN==1, ], var(male))
+# mean(CZ_simYN$male)
+# var(CZ_simYN$male)
+
+# map(seq_along(islands), function(x) {
+#   map(isl_pos[[x]], function(y) {
+#     cline_pos = y
+#     write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
+#                 file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
+#                 row.names = FALSE, col.names = TRUE)
+#     simYN = possibly(sim_mat, otherwise = "Missing snails")
+#     outYN = simYN(pos = cline_pos, isl = islands[x])
+#     # return(outYN)
+#     return(cat("island", islands[x], "at position", cline_pos, "has been simulated ...\n"))
+#   })
+# })
 
 ######################
 # assortative mating #
@@ -282,110 +331,150 @@ map(seq_along(islands), function(x) {
 # pref_out = opt$output
 # pref_out = "gaus_skew/SKEW/sims/"
 
-CZs_am = function(isls) {
-  c_files = lapply(seq_along(isls), function(i) {
-    list.files(path = paste0("tables/", pref_out), pattern = isls[i],
-               full.names = TRUE)
-  })
-  c_df = lapply(seq_along(isls), function(i) {
-    lapply(1:length(c_files[[i]]), function(f) {
-      c_pos = strsplit(basename(c_files[[i]][f]), split = "_")[[1]][2]
-      isl_df = read.csv(c_files[[i]][f])
-      isl_df$male2 = isl_df$male^2
-      p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
-      # ss_mod = glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = isl_df)
-      # p_ss_idx = which.max(fitted(ss_mod))
-      pos_df = cbind(isl_df, position = as.integer(rep(c_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
-    })
-  })
-  return(c_df)
+CZs_join_runs = function(isls, pos) {
+  run_fl = list.files(path = paste0("tables/", pref_out, "stats"), pattern = paste0(isls, "_", pos, "_"),
+                      full.names = TRUE)
+  lapply(1:numrun, function(r) {read.csv(run_fl[r])})
 }
-CZs_am_df = CZs_am(isls = islands)
-# CZs_am_df_one = read.csv("tables/gaus_skew/SKEW/sims/CZA_9_sim_YN.csv")
-# CZs_am_df_two = read.csv("tables/gaus_skew/SKEW/sims/CZA_19_sim_YN.csv")
-# head(CZs_am_df_one)
-# with(data = CZs_am_df_one[CZs_am_df_one$mountYN==1, ], cor(female, male))
-# with(data = CZs_am_df_two[CZs_am_df_two$mountYN==1, ], cor(female, male))
-# hist(CZs_am_df_one$female)
-# hist(CZs_am_df_two$female)
-# coef(glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = CZs_am_df[[1]][[3]]))["male2"]
-
-CZs_ss = function(cz_dat) {
-  ss_mod = glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = cz_dat)
-  dir_ss = coef(ss_mod)["male"]
-  sta_ss = coef(ss_mod)["male2"]
-  p_ss_idx = which.max(fitted(ss_mod))
-  return(cbind(cz_dat, male_mx=rep(cz_dat$male[p_ss_idx], nrow(cz_dat)), male_av=rep(mean(cz_dat$male), nrow(cz_dat)),
-               dss=rep(dir_ss, nrow(cz_dat)), sss=rep(sta_ss, nrow(cz_dat)), pss=fitted(ss_mod)))
-}
-
-CZs_am_ss = lapply(seq_along(islands), function(i) {
-  lapply(seq_along(CZs_am_df[[i]]), function(d) {
-    CZs_ss_poss = possibly(CZs_ss, otherwise = data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(),
-                                                          mountYN=as.integer(), male2=as.numeric(),
-                                                          position=as.integer(), am_cor=as.numeric(),
-                                                          male_mx=as.numeric(), male_av=as.numeric(),
-                                                          dss=as.numeric(), sss=as.numeric(), pss=as.numeric(),
-                                                          stringsAsFactors=FALSE))
-    CZs_ss_poss(cz_dat = CZs_am_df[[i]][[d]])
-  })
+CZ_am_ss_fig = lapply(seq_along(islands), function(i) {
+  cat("Calculating summary statistics for", islands[i], "...\n")
+  rbindlist(lapply(isl_pos[[i]], function(p) {
+    CZs_summ = apply(rbindlist(CZs_join_runs(isls = islands[i], pos = p)), 2, CI)
+    CZs_stats = data.frame(AM = CZs_summ[, 'am_r'],
+                           DSS = CZs_summ[, 'male_mated_mean']-CZs_summ[, 'male_all_mean'],
+                           SSS = CZs_summ[, 'male_mated_var']-CZs_summ[, 'male_all_var'])
+    CZs_dfplot = data.frame(position=rep(p, ncol(CZs_stats)),
+                            low_val=t(CZs_stats)[, 'lower'],
+                            mean_val=t(CZs_stats)[, 'mean'],
+                            upp_val=t(CZs_stats)[, 'upper'],
+                            figure=colnames(CZs_stats))
+    return(CZs_dfplot)
+  }))
 })
 
-CZ_am_fun = function(data, isls) {
-  CZ_clcr = rbindlist(data[[isls]])
-  return(CZ_clcr)
-}
+# CZs_am = function(isls, run) {
+#   lapply(seq_along(isls), function(i) {
+#     lapply(seq_along(isl_pos[[i]]), function(p) {
+#       c_files = list.files(path = paste0("tables/", pref_out, "stats"), pattern = paste(isls[i], isl_pos[[i]][p], sep = "_"),
+#                            full.names = TRUE)
+#       run_df = lapply(1:run, function(r) {
+#         read.csv(c_files[r])
+#       })
+#     })
+#   })
+#   c_df = lapply(seq_along(isls), function(i) {
+#     lapply(1:length(c_files[[i]]), function(f) {
+#       c_pos = strsplit(basename(c_files[[i]][f]), split = "_")[[1]][2]
+#       isl_df = read.csv(c_files[[i]][f])
+#       isl_df$male2 = isl_df$male^2
+#       p_cor = cor(isl_df[isl_df$mountYN==1, ]$female, isl_df[isl_df$mountYN==1, ]$male, method = "pearson")
+#       # ss_mod = glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = isl_df)
+#       # p_ss_idx = which.max(fitted(ss_mod))
+#       pos_df = cbind(isl_df, position = as.integer(rep(c_pos, nrow(isl_df))), am_cor = rep(p_cor, nrow(isl_df)))
+#     })
+#   })
+#   return(c_df)
+# }
+# CZs_am_df = CZs_am(isls = islands, run = numrun)
 
-CZ_am_tot = lapply(seq_along(islands), function(i) {
-  CZ_am_fun(data = CZs_am_ss, isls = i)
-})
-
-CZ_am_ss_fig = lapply(seq_along(islands), function(f) {
-  am4fig = CZ_am_tot[[f]][, c("position", "am_cor")]
-  am4fig = mutate(am4fig, figure="am")
-  colnames(am4fig)[2] = "par_value"
-  dss4fig = CZ_am_tot[[f]][, c("position", "dss")]
-  dss4fig = mutate(dss4fig, figure="dss")
-  colnames(dss4fig)[2] = "par_value"
-  sss4fig = CZ_am_tot[[f]][, c("position", "sss")]
-  sss4fig = mutate(sss4fig, figure="sss")
-  colnames(sss4fig)[2] = "par_value"
-  df4fig = rbind(am4fig, dss4fig, sss4fig)
-  return(distinct(df4fig))
-})
-# sim_set = "sims2_amss"
-# sim_set = "sims1_amss"
-# lapply(seq_along(islands), function(t) {
-#   write.csv(x = CZ_am_ss_fig[[t]],
-#             file = paste0("tables/", dirname(pref_out), "/", sim_set, "/", islands[t], "_am_ss_pars.csv"),
-#             row.names = FALSE)
+# CZs_ss = function(cz_dat) {
+#   ss_mod = glm(mountYN ~ male + male2, family = binomial(link = "logit"), data = cz_dat)
+#   dir_ss = coef(ss_mod)["male"]
+#   sta_ss = coef(ss_mod)["male2"]
+#   p_ss_idx = which.max(fitted(ss_mod))
+#   return(cbind(cz_dat, male_mx=rep(cz_dat$male[p_ss_idx], nrow(cz_dat)), male_av=rep(mean(cz_dat$male), nrow(cz_dat)),
+#                dss=rep(dir_ss, nrow(cz_dat)), sss=rep(sta_ss, nrow(cz_dat)), pss=fitted(ss_mod)))
+# }
+# 
+# CZs_am_ss = lapply(seq_along(islands), function(i) {
+#   lapply(seq_along(CZs_am_df[[i]]), function(d) {
+#     CZs_ss_poss = possibly(CZs_ss, otherwise = data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(),
+#                                                           mountYN=as.integer(), male2=as.numeric(),
+#                                                           position=as.integer(), am_cor=as.numeric(),
+#                                                           male_mx=as.numeric(), male_av=as.numeric(),
+#                                                           dss=as.numeric(), sss=as.numeric(), pss=as.numeric(),
+#                                                           stringsAsFactors=FALSE))
+#     CZs_ss_poss(cz_dat = CZs_am_df[[i]][[d]])
+#   })
 # })
-# lapply(seq_along(islands), function(pl) {
-#   ggplot(data = CZ_am_ss_fig[[pl]]) +
-#     facet_grid(rows = vars(figure), scales = "free") +
-#     geom_point(aes(x = position, y = par_value))
+# 
+# CZ_am_fun = function(data, isls) {
+#   CZ_clcr = rbindlist(data[[isls]])
+#   return(CZ_clcr)
+# }
+# 
+# CZ_am_tot = lapply(seq_along(islands), function(i) {
+#   CZ_am_fun(data = CZs_am_ss, isls = i)
 # })
-CZs_cline_am_ss_plot = lapply(seq_along(islands), function(pl) {
+# lapply(CZ_am_tot, head)
+
+# CZ_am_ss_fig = lapply(seq_along(islands), function(f) {
+#   am4fig = CZ_am_tot[[f]][, c("position", "am_cor")]
+#   am4fig = mutate(am4fig, figure="am")
+#   colnames(am4fig)[2] = "par_value"
+#   dss4fig = CZ_am_tot[[f]][, c("position", "dss")]
+#   dss4fig = mutate(dss4fig, figure="dss")
+#   colnames(dss4fig)[2] = "par_value"
+#   sss4fig = CZ_am_tot[[f]][, c("position", "sss")]
+#   sss4fig = mutate(sss4fig, figure="sss")
+#   colnames(sss4fig)[2] = "par_value"
+#   df4fig = rbind(am4fig, dss4fig, sss4fig)
+#   return(distinct(df4fig))
+# })
+cat("Preparing dataset for figure of the mating summary statistics ...\n")
+CZ_ss_fig = lapply(CZ_am_ss_fig, function(x) {
+  x[x$figure!='AM', ]
+})
+CZ_am_fig = lapply(CZ_am_ss_fig, function(x) {
+  x[x$figure=='AM', ]
+})
+CZs_cline_ss_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZs_phen_cline[[pl]]) +
-    facet_grid(rows = vars(figure), scales = "free") +
+    facet_wrap(~figure, nrow = 3, scales = "free") +
     geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
     geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
     scale_color_manual(values = c("red", "blue")) +
     scale_fill_manual(values = c("red", "blue")) +
     geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x, fill=sex), alpha=0.15) +
+    geom_errorbar(data = CZs_bin_cline[[pl]], aes(x=position[, 'mean'],
+                                                  ymin=log_len[, 'lower'],
+                                                  ymax=log_len[, 'upper']), alpha=0.4, width=2) +
     geom_point(data = CZs_bin_cline[[pl]], aes(x = CZs_bin_cline[[pl]]$position[, 'mean'],
                                                y = CZs_bin_cline[[pl]]$log_len[, 'mean'],
                                                col=CZs_bin_cline[[pl]]$Group.2)) +
     geom_line(aes(position, z_x, col=sex), size=1.3, alpha=0.7) +
-    geom_point(data = CZ_am_ss_fig[[pl]], aes(x = position, y = par_value)) +
-    labs(x = paste0(islands[pl], " shore position"), y = 'ln shell size', fill='', col='') +
+    geom_errorbar(data = CZ_ss_fig[[pl]], aes(x=position,
+                                              ymin=low_val,
+                                              ymax=upp_val), alpha=0.4, width=2) +
+    geom_point(data = CZ_ss_fig[[pl]], aes(x = position, y = mean_val)) +
+    labs(x = paste0(islands[pl], " shore position"), y = '', fill='', col='') +
     theme(legend.position = 'top',
+          strip.text = element_text(face="bold", size=13),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
           legend.text = element_text(size = 15, face = "bold"),
           axis.title = element_text(face = "bold", size = 15))
-  # geom_errorbar(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x), width=0.25)
 })
+CZs_am_plot = lapply(seq_along(islands), function(pl) {
+  ggplot(data = CZ_am_fig[[pl]]) +
+    facet_wrap(~figure, nrow = 1) +
+    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
+    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
+    geom_point(aes(x = position, y = mean_val)) +
+    labs(x = paste0(islands[pl], " shore position"), y = 'r') +
+    ylim(c(0,1)) +
+    theme(strip.text = element_text(face="bold", size=13),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
+          legend.text = element_text(size = 15, face = "bold"),
+          axis.title = element_text(face = "bold", size = 15))
+})
+CZs_cline_am_ss_plot = lapply(seq_along(islands), function(x) {
+  CZs_cline_ss_plot[[x]] + CZs_am_plot[[x]] + plot_layout(ncol = 1, heights = c(4,1))
+})
+
 lapply(seq_along(islands), function(s) {
-  ggsave(filename = paste0("figures/gaus_skew/SKEW/sims/", islands[s], "_cline_am_ss.png"),
+  cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.png"), "...\n")
+  ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.png"),
          plot = CZs_cline_am_ss_plot[[s]])
 })
 
