@@ -336,7 +336,7 @@ CZ_all %>%
 
 
 
-cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,sh,sw){
+cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
   wl = exp(lwl)
   wr = exp(lwr)
   # sc = exp(lsc)
@@ -346,7 +346,7 @@ cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,sh
   p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
   z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
-  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
 
   # right cline
   p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
@@ -408,53 +408,101 @@ cline_2c1s <- function(phen, position, sex, cl, cr, lwl, lwr, crab, wave, zs_c, 
   return(minusll)
 }
 
-rm(theta.init ,mle.cline.2c3s, p)
-mle.cline.2c3s = list(CZA=NULL, CZB=NULL, CZC=NULL, CZD=NULL)
-
-for (p in levels(CZ_all$shore)) {
-  if (p=='CZA'){
-    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
-    title(main = p)
-    theta.init = list(cl=130,cr=280,lwl=3,lwr=2.3,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
-    mle.cline.2c3s$CZA = mle2(cline_2c3s, theta.init,
-                              control=list(parscale=abs(unlist(theta.init))),
-                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
-                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
-  }
-  else if (p=='CZB'){
-    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
-    title(main = p)
-    theta.init = list(cl=70,cr=150,lwl=1.6,lwr=3.9,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
-    mle.cline.2c3s$CZB = mle2(cline_2c3s, theta.init,
-                              control=list(parscale=abs(unlist(theta.init))),
-                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
-                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
-  }
-  else if (p=='CZC'){
-    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
-    title(main = p)
-    theta.init = list(cl=50,cr=125,lwl=1.5,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
-    mle.cline.2c3s$CZC = mle2(cline_2c3s, theta.init,
-                              control=list(parscale=abs(unlist(theta.init))),
-                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
-                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
-  }
-  else {
-    plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
-    title(main = p)
-    theta.init = list(cl=80,cr=175,lwl=1.6,lwr=1.6,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
-    mle.cline.2c3s$CZD = mle2(cline_2c3s, theta.init,
-                              control=list(parscale=abs(unlist(theta.init))),
-                              data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
-                                        position=CZ_all$LCmeanDist[CZ_all$shore==p],
-                                        sex=CZ_all$test_sex[CZ_all$shore==p]))
-  }
+cline_2c4s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
+  wl = exp(lwl)
+  wr = exp(lwr)
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
+  
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+  s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
+  
+  # combined cline
+  cond <- z_x < z_xl
+  z_x[cond] <- z_xl[cond]
+  s_x[cond] <- s_xl[cond]
+  # z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  # s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  # phen_cline = data.frame(phen_cline = z_x, sd_cline = s_x, sex = sex, position = position)
+  # return(phen_cline)
+  return(minusll)
 }
+CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+islands = as.character(unique(CZ_data$shore))
+theta.init = list(CZA=list(cl=130,cr=280,lwl=3,lwr=2.3,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.2,sh=0.2,sw=0.2),
+                  CZB=list(cl=70,cr=150,lwl=1.6,lwr=3.9,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.2,sh=0.2,sw=0.2),
+                  CZC=list(cl=50,cr=125,lwl=1.5,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.2,sh=0.2,sw=0.2),
+                  CZD=list(cl=80,cr=175,lwl=1.6,lwr=1.6,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.2,sh=0.2,sw=0.2))
+# theta.init[[1]]
+lapply(seq_along(islands), function(c) {
+  mle.cline.2c4s = mle2(cline_2c4s, theta.init[[c]],
+                        control=list(parscale=abs(unlist(theta.init[[c]]))),
+                        data=list(phen=-log(CZ_data[CZ_data$shore==islands[c],]$length_mm),
+                                  position=CZ_data[CZ_data$shore==islands[c],]$LCmeanDist,
+                                  sex=CZ_data[CZ_data$shore==islands[c],]$test_sex))
+  cline_est = round(coef(summary(mle.cline.2c4s)), 3)
+  return(cline_est)
+})
 
-lapply(mle.cline.2c3s, summary)
+# rm(theta.init ,mle.cline.2c3s, p)
+# mle.cline.2c3s = list(CZA=NULL, CZB=NULL, CZC=NULL, CZD=NULL)
+# 
+# for (p in levels(CZ_all$shore)) {
+#   if (p=='CZA'){
+#     plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+#     title(main = p)
+#     theta.init = list(cl=130,cr=280,lwl=3,lwr=2.3,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.1,sh=0.3,sw=0.2)
+#     mle.cline.2c3s$CZA = mle2(cline_2c3s, theta.init,
+#                               control=list(parscale=abs(unlist(theta.init))),
+#                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+#                                         position=CZ_all$LCmeanDist[CZ_all$shore==p],
+#                                         sex=CZ_all$test_sex[CZ_all$shore==p]))
+#   }
+#   else if (p=='CZB'){
+#     plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+#     title(main = p)
+#     theta.init = list(cl=70,cr=150,lwl=1.6,lwr=3.9,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
+#     mle.cline.2c3s$CZB = mle2(cline_2c3s, theta.init,
+#                               control=list(parscale=abs(unlist(theta.init))),
+#                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+#                                         position=CZ_all$LCmeanDist[CZ_all$shore==p],
+#                                         sex=CZ_all$test_sex[CZ_all$shore==p]))
+#   }
+#   else if (p=='CZC'){
+#     plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+#     title(main = p)
+#     theta.init = list(cl=50,cr=125,lwl=1.5,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
+#     mle.cline.2c3s$CZC = mle2(cline_2c3s, theta.init,
+#                               control=list(parscale=abs(unlist(theta.init))),
+#                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+#                                         position=CZ_all$LCmeanDist[CZ_all$shore==p],
+#                                         sex=CZ_all$test_sex[CZ_all$shore==p]))
+#   }
+#   else {
+#     plot(CZ_all$LCmeanDist[CZ_all$shore==p], log(CZ_all$length_mm[CZ_all$shore==p]))
+#     title(main = p)
+#     theta.init = list(cl=80,cr=175,lwl=1.6,lwr=1.6,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,sh=0.3,sw=0.2)
+#     mle.cline.2c3s$CZD = mle2(cline_2c3s, theta.init,
+#                               control=list(parscale=abs(unlist(theta.init))),
+#                               data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),
+#                                         position=CZ_all$LCmeanDist[CZ_all$shore==p],
+#                                         sex=CZ_all$test_sex[CZ_all$shore==p]))
+#   }
+# }
+# 
+# lapply(mle.cline.2c3s, summary)
 
 # ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZA)@coef, 2)))
 # ggarrange(tableGrob(round(summary(mle.cline.2c3s$CZB)@coef, 2)))

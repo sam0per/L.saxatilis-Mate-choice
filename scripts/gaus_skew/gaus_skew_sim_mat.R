@@ -3,7 +3,7 @@ rm(list = ls())
 # devtools::install_github("thomasp85/patchwork")
 .packagesdev = "thomasp85/patchwork"
 .packages = c("ggplot2", "dplyr", "rstan", "optparse", "tibble", "bayesplot", "data.table", "purrr",
-              "pracma", "rgl", "parallel", "Rmisc")
+              "pracma", "rgl", "parallel", "Rmisc", "bbmle")
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
 .instdev <- basename(.packagesdev) %in% installed.packages()
@@ -18,8 +18,6 @@ option_list = list(
               help="input data", metavar="character"),
   make_option(c("-m", "--modelpars"), type="character", default=NULL,
               help="mean estimates of the inferred parameters", metavar="character"),
-  make_option(c("-c", "--clinepars"), type = "character", default = NULL,
-              help = "cline parameter estimates", metavar = "character"),
   make_option(c("-n", "--numrun"), type = "integer", default = 3,
               help = "number of replicates for the full simulations [default: %default]", metavar = "integer"),
   make_option(c("-o", "--output"), type = "character", default = "output_sim",
@@ -28,15 +26,15 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
-if (is.null(opt$data) | is.null(opt$modelpars) | is.null(opt$clinepars)) {
+if (is.null(opt$data) | is.null(opt$modelpars)) {
   print_help(opt_parser)
-  stop("At least three arguments must be supplied (input data, stan model and cline parameters).\n", call.=FALSE)
+  stop("At least two arguments must be supplied (input data and stan model).\n", call.=FALSE)
 }
 
 CZ_data = read.csv(opt$data, sep = ";")
 skew_pars = read.csv(opt$modelpars, sep = ";")
 skew_pars = column_to_rownames(skew_pars, var = "parameter")
-CZ_cline_params = read.csv(opt$clinepars, row.names = 1)
+# CZ_cline_params = read.csv(opt$clinepars, row.names = 1)
 pref_out = opt$output
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # skew_pars = read.csv("tables/gaus_skew/SKEW/gaus_skew_params.csv", sep = ";")
@@ -51,10 +49,12 @@ dir.create(file.path("tables", pref_out))
 dir.create(file.path("figures", pref_out))
 dir.create(file.path("tables", pref_out, "stats"))
 dir.create(file.path("figures", pref_out, "stats"))
+# islands = "CZB"
+islands = as.character(unique(CZ_data$shore))
 
-cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc, sh, sw) {
-  # wl = exp(lwl)
-  # wr = exp(lwr)
+cline_2c4s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
+  wl = exp(lwl)
+  wr = exp(lwr)
   # sc = exp(lsc)
   # sh = exp(lsh)
   # sw = exp(lsw)
@@ -62,38 +62,97 @@ cline_2c3s <- function(position, sex, cl, cr, wl, wr, crab, wave, zs_c, zs_w, sc
   p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
   z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
-  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
-
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
+  
   # right cline
   p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
   z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
   z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
   s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
-
+  
   # combined cline
-  z_x[z_x > z_xl] <- z_xl[z_x > z_xl]
-  s_x[z_x > z_xl] <- s_xl[z_x > z_xl]
-  phen_cline = cbind(z_x, s_x, sex, position)
-  return(phen_cline)
+  cond <- z_x < z_xl
+  z_x[cond] <- z_xl[cond]
+  s_x[cond] <- s_xl[cond]
+  # z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  # s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  # phen_cline = data.frame(phen_cline = z_x, sd_cline = s_x, sex = sex, position = position)
+  # return(phen_cline)
+  return(minusll)
 }
-# islands = "CZB"
-islands = as.character(unique(CZ_data$shore))
 
-CZs_phen_cline = lapply(islands, function(x) {
-  cat("Fitting size cline for", x, "...\n")
-  phen_cline = cline_2c3s(position = CZ_data$LCmeanDist[CZ_data$shore==x], sex = CZ_data$test_sex[CZ_data$shore==x],
-                          cl = CZ_cline_params["cl", x], cr = CZ_cline_params["cr", x],
-                          wl = exp(CZ_cline_params["lwl", x]), wr = exp(CZ_cline_params["lwr", x]),
-                          crab = CZ_cline_params["crab", x], wave = CZ_cline_params["wave", x],
-                          zs_c = CZ_cline_params["zs_c", x], zs_w = CZ_cline_params["zs_w", x],
-                          sc = CZ_cline_params["sc", x], sh = CZ_cline_params["sh", x],
-                          sw = CZ_cline_params["sw", x])
-  phen_cline = as.data.frame(cbind(phen_cline, log_len=log(CZ_data[CZ_data$shore==x, ]$length_mm)))
+theta.init = list(CZA=list(cl=130, cr=280, lwl=3, lwr=2.3, crab=-2.1, wave=-1.9, zs_c=-0.1, zs_w=-0.1,
+                           sc=0.2, shl=0.2, sh=0.2, sw=0.2),
+                  CZB=list(cl=70, cr=150, lwl=1.6, lwr=3.9, crab=-2.5, wave=-1.5, zs_c=-0.1, zs_w=-0.1,
+                           sc=0.2, shl=0.2, sh=0.2, sw=0.2),
+                  CZC=list(cl=50, cr=125, lwl=1.5, lwr=3, crab=-2.5, wave=-1.5, zs_c=-0.1, zs_w=-0.1,
+                           sc=0.2, shl=0.2, sh=0.2, sw=0.2),
+                  CZD=list(cl=80, cr=175, lwl=1.6, lwr=1.6, crab=-2.5, wave=-1.5, zs_c=-0.1, zs_w=-0.1,
+                           sc=0.2, shl=0.2, sh=0.2, sw=0.2))
+# theta.init[[1]]
+cline_pars = lapply(seq_along(islands), function(c) {
+  cat("Fitting cline for island", islands[c], "...\n")
+  mle.cline.2c4s = mle2(cline_2c4s, theta.init[[c]],
+                        control=list(parscale=abs(unlist(theta.init[[c]]))),
+                        data=list(phen=-log(CZ_data[CZ_data$shore==islands[c],]$length_mm),
+                                  position=CZ_data[CZ_data$shore==islands[c],]$LCmeanDist,
+                                  sex=CZ_data[CZ_data$shore==islands[c],]$test_sex))
+  cline_est = round(coef(summary(mle.cline.2c4s)), 3)
+  return(cline_est)
+})
+
+cline_sims <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
+  wl = exp(lwl)
+  wr = exp(lwr)
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
+  
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+  s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
+  
+  # combined cline
+  cond <- z_x < z_xl
+  z_x[cond] <- z_xl[cond]
+  s_x[cond] <- s_xl[cond]
+  # z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  # s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  phen_cline = data.frame(phen_cline = z_x, sd_cline = s_x, sex = sex, position = position)
   return(phen_cline)
+  # return(minusll)
+}
+
+CZs_phen_cline = lapply(seq_along(islands), function(x) {
+  cat("Extracting fitted cline values for", islands[x], "...\n")
+  cline_df = cline_sims(phen = -log(CZ_data[CZ_data$shore==islands[x],]$length_mm),
+                        position = CZ_data[CZ_data$shore==islands[x],]$LCmeanDist,
+                        sex = CZ_data[CZ_data$shore==islands[x],]$test_sex,
+                        cl = cline_pars[[x]]['cl', 'Estimate'], cr = cline_pars[[x]]['cr', 'Estimate'],
+                        lwl = cline_pars[[x]]['lwl', 'Estimate'], lwr = cline_pars[[x]]['lwr', 'Estimate'],
+                        crab = cline_pars[[x]]['crab', 'Estimate'], wave = cline_pars[[x]]['wave', 'Estimate'],
+                        zs_c = cline_pars[[x]]['zs_c', 'Estimate'], zs_w = cline_pars[[x]]['zs_w', 'Estimate'],
+                        sc = cline_pars[[x]]['sc', 'Estimate'], shl = cline_pars[[x]]['shl', 'Estimate'],
+                        sh = cline_pars[[x]]['sh', 'Estimate'], sw = cline_pars[[x]]['sw', 'Estimate'])
+  clinefit_obs = as.data.frame(cbind(cline_df, log_len=log(CZ_data[CZ_data$shore==islands[x], ]$length_mm)))
+  return(clinefit_obs)
 })
 
 CZs_phen_cline = lapply(CZs_phen_cline, function(x) {
-  x[, "sex"] = ifelse(x[, "sex"]==1, "female", "male")
+  # x[, "sex"] = ifelse(x[, "sex"]==1, "female", "male")
   x = mutate(x, figure="cline")
   return(x)
 })
@@ -109,29 +168,29 @@ CZs_bin_cline = lapply(CZs_phen_cline, function(r) {
 
 # CZs_cline_plot = lapply(seq_along(islands), function(pl) {
 #   ggplot(data = CZs_phen_cline[[pl]]) +
-#     geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
-#     geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
-#     scale_color_manual(values = c("lightcoral", "black")) +
-#     scale_fill_manual(values = c("lightcoral", "black")) +
-#     geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x, fill=sex), alpha=0.15) +
-#     geom_point(data = CZs_bin_cline[[pl]], aes(x = CZs_bin_cline[[pl]]$position[, 'mean'],
-#                                                y = CZs_bin_cline[[pl]]$log_len[, 'mean'],
-#                                                col=CZs_bin_cline[[pl]]$Group.2)) +
-#     geom_line(aes(position, z_x, col=sex), size=1.3, alpha=0.7) +
+#     geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
+#     geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
+#     scale_color_manual(values = c("red", "blue")) +
+#     scale_fill_manual(values = c("red", "blue")) +
+#     geom_ribbon(aes(x=position, ymin=abs(phen_cline)-sd_cline, ymax=abs(phen_cline)+sd_cline, fill=sex), alpha=0.15) +
+#     geom_point(data = CZs_bin_cline[[pl]], aes(x = position[, 'mean'],
+#                                                y = log_len[, 'mean'],
+#                                                col = Group.2)) +
+#     geom_line(aes(position, abs(phen_cline), col=sex), size=1.2, alpha=0.7) +
 #     labs(x = paste0(islands[pl], " shore position"), y = 'ln shell size', fill='', col='') +
 #     theme(legend.position = 'top',
-#           legend.text = element_text(size = 15, face = "bold"),
+#           legend.text = element_text(size = 13),
 #           axis.title = element_text(face = "bold", size = 15))
 # })
 # lapply(seq_along(islands), function(s) {
 #   ggsave(filename = paste0("figures/clines/", islands[s], "_size_sex.png"), plot = CZs_cline_plot[[s]])
 # })
 
-isl_pos = sapply(islands, function(x) {
-  cat("Chopping", x, "transect into equally-distanced shore positions from\nthe left centre",
-      CZ_cline_params["cl", x], "and the right centre", CZ_cline_params["cr", x], "...\n")
-  isl_c = round(c(CZ_cline_params["cl", x], CZ_cline_params["cr", x]))
-  isl_rng = range(CZ_data[CZ_data$shore==x, ]$LCmeanDist)
+isl_pos = sapply(seq_along(islands), function(x) {
+  cat("Chopping", islands[x], "transect into equally-distanced shore positions from\nthe left centre",
+      cline_pars[[x]]['cl', 'Estimate'], "and the right centre", cline_pars[[x]]['cr', 'Estimate'], "...\n")
+  isl_c = round(c(cline_pars[[x]]['cl', 'Estimate'], cline_pars[[x]]['cr', 'Estimate']))
+  isl_rng = range(CZ_data[CZ_data$shore==islands[x], ]$LCmeanDist)
   # str(isl_rng)
   wavel = sort(round(seq(from = isl_c[1], to = 0, by = -10)))
   crab = sort(round(seq(from = isl_c[2], to = isl_c[1]+5, by = -10)))
@@ -156,21 +215,29 @@ sim_mat = function(pos, isl, run) {
   # fml_m = mean(CZ_sim_sex$female[round(CZ_sim_sex$female$position)==seq(round(pos)-1,round(pos)+1), ]$z_x)
   # fml_sd = mean(CZ_sim_sex$female[round(CZ_sim_sex$female$position)==c(round(pos)-1,round(pos),round(pos)+1), ]$s_x)
   # fml_m = mean(fml_df$z_x)
-  fml_m = as.numeric(cline_2c3s(position = pos, sex = "female",
-                                cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
-                                wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
-                                crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
-                                zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
-                                sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
-                                sw = CZ_cline_params["sw", isl])[,"z_x"])
-  fml_sd = as.numeric(cline_2c3s(position = pos, sex = "female",
-                                 cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
-                                 wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
-                                 crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
-                                 zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
-                                 sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
-                                 sw = CZ_cline_params["sw", isl])[,"s_x"])
-  fml_dtr = rnorm(n = 1000, mean = fml_m, sd = fml_sd)
+  fml_cline = cline_sims(phen = -log(CZ_data[CZ_data$shore==islands[isl],]$length_mm),
+                         position = pos, sex = 'female',
+                         cl = cline_pars[[isl]]['cl', 'Estimate'], cr = cline_pars[[isl]]['cr', 'Estimate'],
+                         lwl = cline_pars[[isl]]['lwl', 'Estimate'], lwr = cline_pars[[isl]]['lwr', 'Estimate'],
+                         crab = cline_pars[[isl]]['crab', 'Estimate'], wave = cline_pars[[isl]]['wave', 'Estimate'],
+                         zs_c = cline_pars[[isl]]['zs_c', 'Estimate'], zs_w = cline_pars[[isl]]['zs_w', 'Estimate'],
+                         sc = cline_pars[[isl]]['sc', 'Estimate'], shl = cline_pars[[isl]]['shl', 'Estimate'],
+                         sh = cline_pars[[isl]]['sh', 'Estimate'], sw = cline_pars[[isl]]['sw', 'Estimate'])
+  # fml_m = as.numeric(cline_2c3s(position = pos, sex = "female",
+  #                               cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
+  #                               wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
+  #                               crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
+  #                               zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
+  #                               sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
+  #                               sw = CZ_cline_params["sw", isl])[,"z_x"])
+  # fml_sd = as.numeric(cline_2c3s(position = pos, sex = "female",
+  #                                cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
+  #                                wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
+  #                                crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
+  #                                zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
+  #                                sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
+  #                                sw = CZ_cline_params["sw", isl])[,"s_x"])
+  fml_dtr = rnorm(n = 10, mean = abs(fml_cline[, 'phen_cline']), sd = fml_cline[, 'sd_cline'])
   for (f in seq_along(fml_dtr)) {
     success=FALSE
     i=1
@@ -179,21 +246,15 @@ sim_mat = function(pos, isl, run) {
     while (!success) {
       # m = sample(ml_dtr, 1, replace = FALSE)
       mpos = pos + rnorm(n=1, mean=0, sd=1.5)
-      msize = as.numeric(cline_2c3s(position = mpos, sex = "male",
-                                    cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
-                                    wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
-                                    crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
-                                    zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
-                                    sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
-                                    sw = CZ_cline_params["sw", isl])[,"z_x"])
-      msd = as.numeric(cline_2c3s(position = mpos, sex = "male",
-                                  cl = CZ_cline_params["cl", isl], cr = CZ_cline_params["cr", isl],
-                                  wl = exp(CZ_cline_params["lwl", isl]), wr = exp(CZ_cline_params["lwr", isl]),
-                                  crab = CZ_cline_params["crab", isl], wave = CZ_cline_params["wave", isl],
-                                  zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
-                                  sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
-                                  sw = CZ_cline_params["sw", isl])[,"s_x"])
-      m = rnorm(n = 1, mean = msize, sd = msd)
+      mal_cline = cline_sims(phen = -log(CZ_data[CZ_data$shore==islands[isl],]$length_mm),
+                             position = mpos, sex = 'male',
+                             cl = cline_pars[[isl]]['cl', 'Estimate'], cr = cline_pars[[isl]]['cr', 'Estimate'],
+                             lwl = cline_pars[[isl]]['lwl', 'Estimate'], lwr = cline_pars[[isl]]['lwr', 'Estimate'],
+                             crab = cline_pars[[isl]]['crab', 'Estimate'], wave = cline_pars[[isl]]['wave', 'Estimate'],
+                             zs_c = cline_pars[[isl]]['zs_c', 'Estimate'], zs_w = cline_pars[[isl]]['zs_w', 'Estimate'],
+                             sc = cline_pars[[isl]]['sc', 'Estimate'], shl = cline_pars[[isl]]['shl', 'Estimate'],
+                             sh = cline_pars[[isl]]['sh', 'Estimate'], sw = cline_pars[[isl]]['sw', 'Estimate'])
+      m = rnorm(n = 1, mean = abs(mal_cline[, 'phen_cline']), sd = mal_cline[, 'sd_cline'])
       p = 0.01 + skew_pars["b","mean"] * exp(-0.5 * (((fem - m) - skew_pars["c","mean"])
                                                      / skew_pars["d","mean"])^2) *
         (1 + erf(skew_pars["alpha","mean"] * ((fem - m) - skew_pars["c","mean"]) / (1.414214 * skew_pars["d","mean"])))
@@ -205,10 +266,10 @@ sim_mat = function(pos, isl, run) {
       success = (s > 0)
       i = i + 1
       if (s > 0) {
-        cat("male size", m, "mated female size", fem, ".\n")
+        cat(islands[isl], "at position", pos, ": male size", m, "mated female size", fem, ".\n")
       }
     }
-    write.table(YN, file = paste0("tables/", pref_out, isl, "_", round(pos), "_sim_YN.csv"), append = TRUE,
+    write.table(YN, file = paste0("tables/", pref_out, islands[isl], "_", round(pos), "_sim_YN.csv"), append = TRUE,
                 sep = ",", row.names = FALSE, col.names = FALSE)
     bar[[f]] = YN
     YN = data.frame()
@@ -221,7 +282,7 @@ sim_mat = function(pos, isl, run) {
   YNvar = var(bar$male)
   AM_SS = data.frame(am_r = Ycor, male_mated_mean = Ymean, male_mated_var = Yvar, male_all_mean = YNmean,
                      male_all_var = YNvar)
-  write.table(AM_SS, file = paste0("tables/", pref_out, "stats/", isl, "_", round(pos), "_AM_SS_stats_", run, ".csv"),
+  write.table(AM_SS, file = paste0("tables/", pref_out, "stats/", islands[isl], "_", round(pos), "_AM_SS_stats_", run, ".csv"),
               append = TRUE, sep = ",", row.names = FALSE, col.names = FALSE)
   return(bar)
 }
@@ -251,7 +312,7 @@ sim_mat = function(pos, isl, run) {
 # CZs_left_minus = CZs_mate_sim(s = -1, centre = "cl", width = "lwl")
 # CZs_left_plus = CZs_mate_sim(s = 1, centre = "cl", width = "lwl")
 numrun = opt$numrun
-# numrun = 2
+# numrun = 3
 map(1:numrun, function(n) {
   cat("Running run number", n, "...\n")
   map(seq_along(islands), function(x) {
@@ -265,7 +326,7 @@ map(1:numrun, function(n) {
                   file = paste0("tables/", pref_out, "stats/", islands[x], "_", round(cline_pos),
                                 "_AM_SS_stats_", n, ".csv"), sep = ",", row.names = FALSE, col.names = TRUE)
       simYN = possibly(sim_mat, otherwise = "Missing snails")
-      outYN = simYN(pos = cline_pos, isl = islands[x], run = n)
+      outYN = simYN(pos = cline_pos, isl = x, run = n)
       # return(outYN)
       return(cat("island", islands[x], "at position", cline_pos, "has been simulated ...\n"))
     })
@@ -402,65 +463,65 @@ CZ_am_fig = lapply(CZ_am_ss_fig, function(x) {
 CZs_cline_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZs_phen_cline[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
-    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
     scale_color_manual(values = c("red", "blue")) +
     scale_fill_manual(values = c("red", "blue")) +
-    geom_ribbon(aes(x=position, ymin=z_x-s_x, ymax=z_x+s_x, fill=sex), alpha=0.15) +
+    geom_ribbon(aes(x=position, ymin=abs(phen_cline)-sd_cline, ymax=abs(phen_cline)+sd_cline, fill=sex), alpha=0.15) +
     geom_errorbar(data = CZs_bin_cline[[pl]], aes(x=position[, 'mean'],
                                                   ymin=log_len[, 'lower'],
                                                   ymax=log_len[, 'upper']), alpha=0.4, width=2) +
-    geom_point(data = CZs_bin_cline[[pl]], aes(x = CZs_bin_cline[[pl]]$position[, 'mean'],
-                                               y = CZs_bin_cline[[pl]]$log_len[, 'mean'],
-                                               col=CZs_bin_cline[[pl]]$Group.2), size=0.7) +
-    geom_line(aes(position, z_x, col=sex), size=1.1, alpha=0.7) +
+    geom_point(data = CZs_bin_cline[[pl]], aes(x = position[, 'mean'],
+                                               y = log_len[, 'mean'],
+                                               col=Group.2), size=0.7) +
+    geom_line(aes(position, abs(phen_cline), col=sex), size=0.9, alpha=0.7) +
     labs(x = '', y = 'ln size', fill='', col='') +
     theme(legend.position = 'top',
           strip.text = element_text(face="bold", size=13),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
           legend.text = element_text(size = 13),
           axis.title.y = element_text(face = "bold", size = 9))
 })
 CZs_dss_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_dss_fig[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
-    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val), size=0.7) +
-    geom_line(aes(x = position, y = mean_val), size=0.7) +
+    geom_point(aes(x = position, y = mean_val), size=0.8) +
+    geom_line(aes(x = position, y = mean_val), size=0.5) +
     labs(x = '', y = paste0('mated males - all males\n(mean size)')) +
     ylim(c(-0.2, 0.2)) +
     theme(strip.text = element_text(face="bold", size=12),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
           axis.title.y = element_text(face = "bold", size = 9))
 })
 CZs_sss_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_sss_fig[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
-    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val), size=0.7) +
-    geom_line(aes(x = position, y = mean_val), size=0.7) +
+    geom_point(aes(x = position, y = mean_val), size=0.8) +
+    geom_line(aes(x = position, y = mean_val), size=0.5) +
     labs(x = '', y = paste0('mated males - all males\n(variance size)')) +
     ylim(c(-0.1, 0.1)) +
     theme(strip.text = element_text(face="bold", size=12),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
           axis.title.y = element_text(face = "bold", size = 9))
 })
 CZs_am_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_am_fig[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = CZ_cline_params["cl", pl], linetype = "dashed") +
-    geom_vline(xintercept = CZ_cline_params["cr", pl], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val), size=0.7) +
-    geom_line(aes(x = position, y = mean_val), size=0.7) +
+    geom_point(aes(x = position, y = mean_val), size=0.8) +
+    geom_line(aes(x = position, y = mean_val), size=0.5) +
     labs(x = paste0(islands[pl], " shore position"), y = 'r') +
     ylim(c(0,1)) +
     theme(strip.text = element_text(face="bold", size=12),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.8),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
           axis.title.y = element_text(face = "bold", size = 9),
           axis.title.x = element_text(face = "bold"))
 })

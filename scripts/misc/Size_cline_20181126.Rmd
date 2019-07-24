@@ -16,27 +16,27 @@ library(pander)
 ```
 
 
-```{r cline function 2 centres 3 sd, message=FALSE}
+```{r cline function 2 centres 4 sd, message=FALSE}
 CZ_all = read.csv("../../data/CZ_all_mating_clean.csv", sep = ";")
 
-cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,lsc,lsh,lsw){
+cline_2c4s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
   wl = exp(lwl)
   wr = exp(lwr)
-  sc = exp(lsc)
-  sh = exp(lsh)
-  sw = exp(lsw)
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
   # left cline
   p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
   z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
   z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
-  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*sh^2 + (p_xl^2)*(sw^2-sc^2))
-  
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
+
   # right cline
-  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing 
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
   z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
   z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
   s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
-  
+
   # combined cline
   z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
   s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
@@ -47,7 +47,7 @@ cline_2c3s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,lsc,l
 }
 
 p = "CZB"
-theta.init = list(cl=70,cr=125,lwl=1.6,lwr=3,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,lsc=-1.6,lsh=-0.7,lsw=-1.6)
+theta.init = list(cl=70,cr=150,lwl=1.6,lwr=3.9,crab=-2.5,wave=-1.5,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.3,sh=0.3,sw=0.2)
 mle.cline.2c3s = mle2(cline_2c3s, theta.init,
                       control=list(parscale=abs(unlist(theta.init))),
                       data=list(phen=-log(CZ_all$length_mm[CZ_all$shore==p]),

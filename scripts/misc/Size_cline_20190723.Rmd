@@ -1,0 +1,125 @@
+---
+title: "Size cline analysis"
+author: "Samuel Perini"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(bbmle)
+library(magrittr)
+library(dplyr)
+library(pander)
+library(ggplot2)
+```
+
+
+```{r cline function 2 centres 4 sd, message=FALSE}
+CZ_all = read.csv("../../../2.mating/data/CZ_all_mating_clean.csv", sep = ";")
+isl = "CZA"
+CZone = CZ_all[CZ_all$shore==isl, ]
+
+cline_2c4s <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
+  wl = exp(lwl)
+  wr = exp(lwr)
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
+
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+  s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
+
+  # combined cline
+  cond <- z_x < z_xl
+  z_x[cond] <- z_xl[cond]
+  s_x[cond] <- s_xl[cond]
+  # z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  # s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  # phen_cline = data.frame(phen_cline = z_x, sd_cline = s_x, sex = sex, position = position)
+  # return(phen_cline)
+  return(minusll)
+}
+
+theta.init = list(cl=130,cr=280,lwl=3,lwr=2.3,crab=-2.1,wave=-1.9,zs_c=-0.1,zs_w=-0.1,sc=0.2,shl=0.2,sh=0.2,sw=0.2)
+mle.cline.2c4s = mle2(cline_2c4s, theta.init,
+                      control=list(parscale=abs(unlist(theta.init))),
+                      data=list(phen=-log(CZone$length_mm),
+                                position=CZone$LCmeanDist,
+                                sex=CZone$test_sex))
+
+(cline_est = round(coef(summary(mle.cline.2c4s)), 3))
+
+cline_sims <- function(phen,position,sex,cl,cr,lwl,lwr,crab,wave,zs_c,zs_w,sc,shl,sh,sw){
+  wl = exp(lwl)
+  wr = exp(lwr)
+  # sc = exp(lsc)
+  # sh = exp(lsh)
+  # sw = exp(lsw)
+  # left cline
+  p_xl <- 1-1/(1+exp(0-4*(position-cl)/wl))  # decreasing
+  z_xl <- crab+(wave-crab)*p_xl  # z_xl is expected phenotype for left cline
+  z_xl[sex=="female"] <- z_xl[sex=="female"] + zs_c + (zs_w-zs_c)*p_xl[sex=="female"]
+  s_xl <- sqrt(sc^2 + 4*p_xl*(1-p_xl)*shl^2 + (p_xl^2)*(sw^2-sc^2))
+
+  # right cline
+  p_x <- 1/(1+exp(0-4*(position-cr)/wr))  # increasing
+  z_x <- crab+(wave-crab)*p_x  # z_x is expected phenotype for the right cline
+  z_x[sex=="female"] <- z_x[sex=="female"] + zs_c + (zs_w-zs_c)*p_x[sex=="female"]
+  s_x <- sqrt(sc^2 + 4*p_x*(1-p_x)*sh^2 + (p_x^2)*(sw^2-sc^2))
+
+  # combined cline
+  cond <- z_x < z_xl
+  z_x[cond] <- z_xl[cond]
+  s_x[cond] <- s_xl[cond]
+  # z_x[z_x < z_xl] <- z_xl[z_x < z_xl]
+  # s_x[z_x < z_xl] <- s_xl[z_x < z_xl]
+  minusll <- -sum(dnorm(phen,z_x,s_x,log=T))
+  if(crab > wave){minusll <- minusll+1000}
+  if(cl > cr){minusll <- minusll+1000}
+  phen_cline = data.frame(phen_cline = z_x, sd_cline = s_x, sex = sex, position = position)
+  return(phen_cline)
+  # return(minusll)
+}
+cline_df = cline_sims(phen = -log(CZone$length_mm), position = CZone$LCmeanDist, sex = CZone$test_sex,
+                      cl = cline_est['cl', 'Estimate'], cr = cline_est['cr', 'Estimate'],
+                      lwl = cline_est['lwl', 'Estimate'], lwr = cline_est['lwr', 'Estimate'],
+                      crab = cline_est['crab', 'Estimate'], wave = cline_est['wave', 'Estimate'],
+                      zs_c = cline_est['zs_c', 'Estimate'], zs_w = cline_est['zs_w', 'Estimate'],
+                      sc = cline_est['sc', 'Estimate'], shl = cline_est['shl', 'Estimate'],
+                      sh = cline_est['sh', 'Estimate'], sw = cline_est['sw', 'Estimate'])
+ggplot(data = cline_df) +
+  geom_vline(xintercept = cline_est['cl', 'Estimate'], linetype = "dashed") +
+  geom_vline(xintercept = cline_est['cr', 'Estimate'], linetype = "dashed") +
+  geom_ribbon(aes(x=position, ymin=abs(phen_cline)-sd_cline, ymax=abs(phen_cline)+sd_cline, fill=sex), alpha=0.15) +
+  scale_color_manual(values = c("red", "blue")) +
+  scale_fill_manual(values = c("red", "blue")) +
+  geom_line(aes(position, abs(phen_cline), col=sex), size=1.1, alpha=0.7) +
+  labs(x = paste0(isl, ' shore position'), y = 'ln size', fill='', col='') +
+  theme(legend.position = 'top',
+        legend.text = element_text(size = 13),
+        axis.title = element_text(face = "bold", size = 15))
+
+cline_sims(phen = -log(CZone$length_mm), position = 50, sex = "female",
+           cl = cline_est['cl', 'Estimate'], cr = cline_est['cr', 'Estimate'],
+           lwl = cline_est['lwl', 'Estimate'], lwr = cline_est['lwr', 'Estimate'],
+           crab = cline_est['crab', 'Estimate'], wave = cline_est['wave', 'Estimate'],
+           zs_c = cline_est['zs_c', 'Estimate'], zs_w = cline_est['zs_w', 'Estimate'],
+           sc = cline_est['sc', 'Estimate'], shl = cline_est['shl', 'Estimate'],
+           sh = cline_est['sh', 'Estimate'], sw = cline_est['sw', 'Estimate'])
+```
+
+
