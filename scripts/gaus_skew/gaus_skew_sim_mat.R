@@ -237,7 +237,7 @@ sim_mat = function(pos, isl, run) {
   #                                zs_c = CZ_cline_params["zs_c", isl], zs_w = CZ_cline_params["zs_w", isl],
   #                                sc = CZ_cline_params["sc", isl], sh = CZ_cline_params["sh", isl],
   #                                sw = CZ_cline_params["sw", isl])[,"s_x"])
-  fml_dtr = rnorm(n = 10, mean = abs(fml_cline[, 'phen_cline']), sd = fml_cline[, 'sd_cline'])
+  fml_dtr = rnorm(n = 1000, mean = abs(fml_cline[, 'phen_cline']), sd = fml_cline[, 'sd_cline'])
   for (f in seq_along(fml_dtr)) {
     success=FALSE
     i=1
