@@ -212,17 +212,21 @@ CZ_data_bin =
 # summary(CZ_data_bin)
 
 pdf("figures/gaus_skew/SKEW/gaus_skew_preds.pdf", width=8, height=7)
+# pdf("figures/gaus_skew/SKEW/gaus_skew_obs_bin.pdf", width=8, height=7)
 ggplot(data = CZ_data) +
   geom_vline(xintercept = 0, linetype = "dashed") +
   geom_ribbon(aes(x = size_ratio,ymin = stan_yhat_lci, ymax = stan_yhat_uci), fill = "orange", alpha=0.3) +
   geom_errorbar(data = CZ_data_bin, aes(x = mean_ratio, ymin = lci_mount, ymax = uci_mount),alpha = 0.2) +
   scale_colour_manual(values=c("blue","orange2")) +
-  geom_line(aes(size_ratio, stan_yhat, col="predictions")) +
-  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations")) +
-  labs(size="bin size",x="ln female size - ln male size",
-       y="probability of mating",col="") +
+  geom_line(aes(size_ratio, stan_yhat, col="predictions"), size=2) +
+  geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount, col="observations"), size=2) +
+  # geom_point(data = CZ_data_bin, aes(x = mean_ratio, y = mount), col='blue', size=3) +
+  labs(x="ln female size - ln male size",
+       y="probability of mating", col="") +
   scale_x_continuous(breaks = seq(-1.5,1.5,0.5)) +
   theme(legend.text = element_text(size = 15,face = "bold"), legend.position = 'none',
-        axis.title = element_text(face = "bold", size = 15))
+        axis.title = element_text(face = "bold", size = 18),
+        axis.ticks = element_line(size = 2),
+        axis.text = element_text(size = 15))
   # grids(linetype = "dashed")
 dev.off()
