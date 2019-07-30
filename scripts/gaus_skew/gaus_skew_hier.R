@@ -39,6 +39,7 @@ if (is.null(opt$data) | is.null(opt$stanfile) | is.null(opt$iterations)) {
 CZ_data = read.csv(opt$data, sep = ";")
 pref_out = opt$output
 # pref_out = "gaus_skew/Dhyp_sex/gaus_skew_hier_Dhyp_sex"
+lapply(c("tables", "figures", "models"), function(d) dir.create(file.path(d, dirname(pref_out))))
 pred_mx = opt$predictors
 
 #########################################
@@ -54,10 +55,12 @@ if (pred_mx == "all") {
 } else if (pred_mx == "shore") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore, data = CZ_data)[,-1]
 } else if (pred_mx == "ecotype") {
-  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + shape, data = CZ_data)[,-1]
+  CZ_matrix = model.matrix(mountYNcontact ~ ref_ecotype + shape, data = CZ_data)[,-1]
 } else if (pred_mx == "sex") {
   CZ_matrix = matrix(model.matrix(mountYNcontact ~ test_sex, data = CZ_data)[,-1])
   colnames(CZ_matrix) = "test_sexmale"
+} else if (pred_mx == "ecoshore") {
+  CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + shape, data = CZ_data)[,-1]
 } else if (pred_mx == "islsex") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + test_sex, data = CZ_data)[,-1]
 } else {
