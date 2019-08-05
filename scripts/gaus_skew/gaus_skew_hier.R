@@ -21,7 +21,7 @@ option_list = list(
   make_option(c("-c", "--chains"), type = "integer", default = 4,
               help = "number of MCMC chains [default: %default]", metavar = "integer"),
   make_option(c("-p", "--predictors"), type = "character", default = NULL,
-              help = "select predictors of the model matrix [all, shore, ecotype, sex, islsex]", metavar = "character"),
+              help = "select predictors of the model matrix [all, shore, ecotype, sex, isleco, islsex, ecosex]", metavar = "character"),
   make_option(c("-m", "--modhyp"), type = "character", default = NULL,
               help = "choose which parameter to transform into hyper [b_par, c_par, d_par, alpha_par]", metavar = "character"),
   make_option(c("-o", "--output"), type = "character", default = "output",
@@ -59,10 +59,12 @@ if (pred_mx == "all") {
 } else if (pred_mx == "sex") {
   CZ_matrix = matrix(model.matrix(mountYNcontact ~ test_sex, data = CZ_data)[,-1])
   colnames(CZ_matrix) = "test_sexmale"
-} else if (pred_mx == "ecoshore") {
+} else if (pred_mx == "isleco") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + shape, data = CZ_data)[,-1]
 } else if (pred_mx == "islsex") {
   CZ_matrix = model.matrix(mountYNcontact ~ shore + test_sex, data = CZ_data)[,-1]
+} else if (pred_mx == "ecosex") {
+  CZ_matrix = model.matrix(mountYNcontact ~ ref_ecotype + test_sex * shape, data = CZ_data)[,-1]
 } else {
   print("Model matrix is missing")
 }
