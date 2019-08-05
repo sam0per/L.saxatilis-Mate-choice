@@ -49,19 +49,24 @@ ggplot(data = hyp_isl, aes(x = size_ratio, y = stan_yhat)) +
 dev.off()
 
 colnames(CZ_data)
-pdf(paste0("figures/", pref_out, basename(dirname(pref_out)),"_fit.pdf"), width=8, height=7)
+pdf(paste0("figures/", pref_out, basename(dirname(pref_out)),"_fit.pdf"), width=7, height=7)
 ggplot(data = CZ_data, aes(x = size_ratio, y = stan_yhat)) +
   facet_wrap(~shore) +
-  geom_line(aes(col=test_sex), size=1.5) +
+  # geom_line(aes(col=test_sex), size=1.5) +
+  geom_line(aes(col=ref_ecotype), size=1.5) +
   # geom_line(aes(x = size_ratio, y = stan_yhat_lci), alpha=0.5, linetype = "dashed") +
   # geom_line(aes(x = size_ratio, y = stan_yhat_uci), alpha=0.5, linetype = "dashed")
-  geom_ribbon(aes(x = size_ratio, ymin = stan_yhat_lci, ymax = stan_yhat_uci, fill = test_sex), alpha=0.1) +
+  # geom_ribbon(aes(x = size_ratio, ymin = stan_yhat_lci, ymax = stan_yhat_uci, fill = test_sex), alpha=0.25) +
+  geom_ribbon(aes(x = size_ratio, ymin = stan_yhat_lci, ymax = stan_yhat_uci, fill = ref_ecotype), alpha=0.25) +
+  # scale_color_manual(values = c("red", "blue")) +
+  scale_color_manual(values = c("darkgoldenrod3", "darkorchid4")) +
   labs(x="ln female size - ln male size", y="probability of mating", col="", fill ="") +
   scale_x_continuous(breaks = seq(-1.5,1.5,0.5)) +
-  theme(legend.text = element_text(size = 15,face = "bold"),
-        axis.title = element_text(face = "bold", size = 15),
+  theme(legend.position = 'top',
         strip.text = element_text(face="bold", size=13),
-        strip.background = element_rect(fill="lightblue", colour="black",size=1))
+        strip.background = element_rect(fill="lightblue", colour="black",size=1),
+        legend.text = element_text(size = 13),
+        axis.title = element_text(face = "bold", size = 15))
 dev.off()
 
 skew_pars = read.csv("tables/gaus_skew/SKEW/gaus_skew_params.csv", sep = ";")
@@ -72,6 +77,8 @@ pmat = function(b0, b1, c, d, alpha, dat) {
 range(pmat(b0 = 0.01, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
            alpha = skew_pars["alpha","mean"], dat = CZ_data$size_ratio))
 # max(pmat(b0 = 0, b1 = 0.36, c = 0.23, d = 0.74, alpha = 1.61, dat = CZ_data$size_ratio))
+pmat(b0 = 0.01, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
+     alpha = skew_pars["alpha","mean"], dat = -0.5)
 CImat = read.csv("tables/gaus_skew/SKEW/gaus_skew_mat.csv", sep = ";")
 max(CImat$stan_yhat_lci)
 max(CImat$stan_yhat_uci)
