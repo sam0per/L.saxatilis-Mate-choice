@@ -2465,3 +2465,42 @@ cor(post$mu3[,1], post$mu3[,2])
 cor(post$alpha1, post$lambda1)
 cor(post$alpha1, post$alpha2)
 #list_of_draws <- rstan::extract(gaus_sex)
+
+###############################################
+#### separate facet phen cline simulations ####
+###############################################
+CZs_shore_cline = lapply(seq_along(islands), function(d) {
+  mutate(.data = CZs_phen_cline[[d]], shore = islands[d])
+})
+
+
+CZs_cline_plot = lapply(seq_along(islands), function(pl) {
+  ggplot(data = CZs_shore_cline[[pl]]) +
+    facet_wrap(~shore, nrow = 1) +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed", size=2) +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed", size=2) +
+    scale_color_manual(values = c("red", "blue")) +
+    scale_fill_manual(values = c("red", "blue")) +
+    geom_ribbon(aes(x=position, ymin=abs(phen_cline)-sd_cline, ymax=abs(phen_cline)+sd_cline, fill=sex), alpha=0.15) +
+    geom_errorbar(data = CZs_bin_cline[[pl]], aes(x=position[, 'mean'],
+                                                  ymin=log_len[, 'lower'],
+                                                  ymax=log_len[, 'upper']), alpha=0.4, width=2.2, size=1) +
+    geom_point(data = CZs_bin_cline[[pl]], aes(x = position[, 'mean'],
+                                               y = log_len[, 'mean'],
+                                               col=Group.2), size=2.7) +
+    geom_line(aes(position, abs(phen_cline), col=sex), size=1.9, alpha=0.7) +
+    labs(x = paste0(islands[pl], ' shore position'), y = 'ln size', fill='', col='') +
+    theme(legend.position = 'top',
+          strip.text = element_text(face="bold", size=15),
+          strip.background = element_rect(fill="lightblue", colour="black",size=1),
+          legend.text = element_text(size = 14),
+          axis.title = element_text(face = "bold", size = 18),
+          axis.ticks = element_line(size = 2),
+          axis.text = element_text(size = 15))
+})
+
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("../conf/", islands[s], "_phen_cline.pdf"), "...\n")
+  ggsave(filename = paste0("../conf/", islands[s], "_phen_cline.pdf"),
+         plot = CZs_cline_plot[[s]], width = 8, height = 7)
+})
