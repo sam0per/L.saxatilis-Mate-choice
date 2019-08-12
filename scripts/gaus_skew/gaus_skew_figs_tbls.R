@@ -321,6 +321,69 @@ lapply(seq_along(islands), function(s) {
   ggsave(filename = paste0("figures/", pref_out, islands[s], "_sss.pdf"),
          plot = CZs_sss_plot[[s]], device = "pdf", width = 8, height = 4)
 })
+
+CZBdat = CZ_data[CZ_data$shore=='CZB', ]
+range(CZBdat$LCmeanDist)
+CZBdat50 = CZBdat[CZBdat$LCmeanDist < 53, ]
+colnames(CZBdat50)
+pdf("../../conf/ESEB/Turku2019/CZB_obs_fm_size_50.pdf", width=8, height=7)
+ggplot(data = CZBdat50) +
+  geom_histogram(aes(x = log(length_mm), y = (..count..)/sum(..count..), fill = test_sex),
+                 col='black', position = 'dodge', binwidth = 0.2) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(x='ln size', y='frequency', fill='') +
+  theme(legend.position = 'top', legend.text = element_text(size = 14),
+        axis.title = element_text(face = "bold", size = 18),
+        axis.ticks = element_line(size = 2),
+        axis.text = element_text(size = 15))
+dev.off()
+log(mean(CZBdat50[CZBdat50$test_sex=='female', ]$length_mm))
+log(mean(CZBdat50[CZBdat50$test_sex=='male', ]$length_mm))
+
+# rbindlist_fread <- function(path, pattern = "*.csv") {
+#   files = list.files(path, pattern, full.names = TRUE)
+#   rbindlist(lapply(files, function(x) fread(x)))
+# }
+
+CZB6 = read.csv("tables/gaus_skew/SKEW/repsims/CZB_6_sim_YN.csv")
+head(CZB6)
+CZB6_1 = CZB6[CZB6$mountYN==1, ]
+CZB6_CI = as.data.frame(rbind(CI(CZB6_1$male), CI(CZB6$male)))
+CZB6_CI$fig = c('mated', 'all')
+CZB6_1$fig = 'mated'
+CZB6$fig = 'all'
+CZB6 = rbind(CZB6, CZB6_1)
+tail(CZB6)
+pdf("../../conf/ESEB/Turku2019/CZB_sim_pos6_SS.pdf", width=8, height=7)
+ggplot(data = CZB6) +
+  geom_histogram(aes(x = male, y = (..count..)/sum(..count..), fill = fig),
+                 col='black', binwidth = 0.15, position = 'dodge') +
+  geom_vline(xintercept = CZB6_CI$mean[1], col="darkcyan", size=1.7) +
+  geom_vline(xintercept = CZB6_CI$mean[2], col="blue", size=1.7) +
+  # scale_fill_viridis_d() +
+  # geom_histogram(data = CZB6[CZB6$mountYN==1, ], aes(x = male, y = (..count..)/sum(..count..), fill = 'mated'),
+  #                col='black', binwidth = 0.2, position = 'dodge') +
+  scale_fill_manual(values = c("blue", "darkcyan")) +
+  labs(x='ln male size', y='frequency', fill='') +
+  theme(legend.position = 'top', legend.text = element_text(size = 14),
+        axis.title = element_text(face = "bold", size = 18),
+        axis.ticks = element_line(size = 2),
+        axis.text = element_text(size = 15))
+dev.off()
+
+with(data = CZB6_1, cor(female, male))
+pdf("../../conf/ESEB/Turku2019/figures/CZB_sim_pos6_AM.pdf", width=8, height=7)
+ggplot(data = CZB6_1) +
+  geom_abline(slope=1, linetype='dashed', size=2, alpha=0.6) +
+  # geom_point(aes(x = male, y = female), size=3, col='black') +
+  geom_point(aes(x = male, y = female), size=2, col='black') +
+  labs(x='ln male size', y='ln female size') +
+  theme(axis.title = element_text(face = "bold", size = 18),
+        axis.ticks = element_line(size = 2),
+        axis.text = element_text(size = 15)) +
+  annotate("text", x = 1, y = 2.7, label = "paste(\"Pearson's \", ,italic(r), \" = 0.33\")",
+           parse = TRUE, size = 7)
+dev.off()
 ############################
 ############################
 ############################
