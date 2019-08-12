@@ -2504,3 +2504,61 @@ lapply(seq_along(islands), function(s) {
   ggsave(filename = paste0("../conf/", islands[s], "_phen_cline.pdf"),
          plot = CZs_cline_plot[[s]], width = 8, height = 7)
 })
+######################
+######################
+#### model search ####
+######################
+CZ_crit = read.csv("old/CZ_ABCD/results/CZABCD_bestsub.csv",sep = ";")
+
+# final model with the lowest AIC and BIC
+# (ABIC = with(CZ_crit,frml[AIC <= 3853 & BIC <= 3930]))
+
+# models with the lowest AIC
+CZ_crit[which.min(CZ_crit$AIC), ]
+head(arrange(CZ_crit, AIC))
+# (AIC = with(CZ_crit,frml[AIC >= 3851 & AIC <= 3853]))
+
+# model with the lowest BIC
+# (BIC = with(CZ_crit,frml[BIC >= 3922 & BIC <= 3924]))
+colnames(CZ_data)
+CZ_data$size_ratio3 = CZ_data$size_ratio^3
+summary(glm(formula = mountYNcontact ~ size_ratio2+female_size:shore+shape:ref_ecotype+size_ratio:ref_ecotype+size_ratio3:shore,
+            family = binomial(), data = CZ_data))
+
+library(broom)
+library(dplyr)
+CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+colnames(CZ_data)
+CZ.glm = CZ_data[, c("log_female", "shape", "size_ratio", "size_ratio2", "ref_ecotype", "shore", "mountYNcontact")]
+CZ.glm$size_ratio3 = CZ.glm$size_ratio^3
+CZ.glm$ref_ecotype=as.integer(CZ.glm$ref_ecotype) # 1 for crab and 2 for wave
+CZ.glm$shore=as.integer(CZ.glm$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
+CZ.glm$eco_fem_int=CZ.glm$ref_ecotype*CZ.glm$log_female
+CZ.glm$eco_shape_int=CZ.glm$ref_ecotype*CZ.glm$shape
+CZ.glm$eco_ratio_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio
+CZ.glm$eco_ratio2_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio2
+CZ.glm$eco_ratio3_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio3
+CZ.glm$eco_shore_int=CZ.glm$ref_ecotype*CZ.glm$shore
+CZ.glm$shape_fem_int=CZ.glm$shape*CZ.glm$log_female
+CZ.glm$shape_ratio_int=CZ.glm$shape*CZ.glm$size_ratio
+CZ.glm$shape_ratio2_int=CZ.glm$shape*CZ.glm$size_ratio2
+CZ.glm$shape_ratio3_int=CZ.glm$shape*CZ.glm$size_ratio3
+CZ.glm$shape_shore_int=CZ.glm$shape*CZ.glm$shore
+CZ.glm$shore_fem_int=CZ.glm$shore*CZ.glm$log_female
+CZ.glm$shore_ratio_int=CZ.glm$shore*CZ.glm$size_ratio
+CZ.glm$shore_ratio2_int=CZ.glm$shore*CZ.glm$size_ratio2
+CZ.glm$shore_ratio3_int=CZ.glm$shore*CZ.glm$size_ratio3
+colnames(CZ.glm)
+CZ_form_add = names(CZ.glm)[-7]
+CZ_form_int = unlist(lapply(2, function(n) combn(CZ_form_add, n, FUN=function(row) paste0(row,   collapse = ":"))))
+X = c(CZ_form_add,CZ_form_int)
+X = X[1:6]
+CZ_form = unlist(lapply(1:5, function(n) {
+  combn(X, n, FUN=function(row) paste0("mountYNcontact ~ ", paste0(row, collapse = "+")))
+}))
+CZ_crit = bind_rows(lapply(CZ_form, function(frml) {
+  a = glance(glm(frml,family = binomial, data=CZ.glm))
+  a$frml = frml
+  return(a)
+}))
+arrange(CZ_crit, AIC)

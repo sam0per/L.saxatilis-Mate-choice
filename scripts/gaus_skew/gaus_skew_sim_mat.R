@@ -518,8 +518,8 @@ CZs_am_plot = lapply(seq_along(islands), function(pl) {
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
     geom_point(aes(x = position, y = mean_val), size=0.8) +
     geom_line(aes(x = position, y = mean_val), size=0.5) +
-    labs(x = paste0(islands[pl], " shore position"), y = 'r') +
-    ylim(c(0,1)) +
+    labs(x = paste0(islands[pl], " transect position"), y = expression(italic('r'))) +
+    ylim(c(0,0.75)) +
     theme(strip.text = element_text(face="bold", size=12),
           strip.background = element_rect(fill="lightblue", colour="black",size=1),
           axis.title.y = element_text(face = "bold", size = 9),
@@ -529,9 +529,9 @@ CZs_cline_am_ss_plot = lapply(seq_along(islands), function(x) {
   CZs_cline_plot[[x]] + CZs_dss_plot[[x]] + CZs_sss_plot[[x]] + CZs_am_plot[[x]] + plot_layout(ncol = 1, heights = c(2,2,2,2))
 })
 lapply(seq_along(islands), function(s) {
-  cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.png"), "...\n")
-  ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.png"),
-         plot = CZs_cline_am_ss_plot[[s]])
+  cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"), "...\n")
+  ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"),
+         plot = CZs_cline_am_ss_plot[[s]], device = "pdf", width = 7, height = 8)
 })
 
 # ############
