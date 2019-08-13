@@ -64,7 +64,7 @@ CZ_form_int = unlist(lapply(2, function(n) combn(CZ_form_add, n, FUN=function(ro
 X = c(CZ_form_add, CZ_form_int)
 # X = X[1:6]
 cat("\nCreating models with additive effects and 2-way interactions ...\n")
-CZ_form = unlist(lapply(1:5, function(n) {
+CZ_form = unlist(lapply(1:opt$npredictors, function(n) {
   combn(X, n, FUN=function(row) paste0(opt$variabley, " ~ ", paste0(row, collapse = "+")))
 }))
 cat("\nRunning", length(CZ_form), "GLMs family binomial ...\n")
