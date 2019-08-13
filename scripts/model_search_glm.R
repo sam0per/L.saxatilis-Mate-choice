@@ -37,23 +37,23 @@ CZ_data = read.csv(opt$data, sep = ";")
 # colnames(CZ_data)
 CZ.glm = CZ_data[, c("log_female", "shape", "size_ratio", "size_ratio2", "ref_ecotype", "shore", "mountYNcontact")]
 CZ.glm$size_ratio3 = CZ.glm$size_ratio^3
-CZ.glm$ref_ecotype=as.integer(CZ.glm$ref_ecotype) # 1 for crab and 2 for wave
-CZ.glm$shore=as.integer(CZ.glm$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
-CZ.glm$eco_fem_int=CZ.glm$ref_ecotype*CZ.glm$log_female
-CZ.glm$eco_shape_int=CZ.glm$ref_ecotype*CZ.glm$shape
-CZ.glm$eco_ratio_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio
-CZ.glm$eco_ratio2_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio2
-CZ.glm$eco_ratio3_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio3
-CZ.glm$eco_shore_int=CZ.glm$ref_ecotype*CZ.glm$shore
-CZ.glm$shape_fem_int=CZ.glm$shape*CZ.glm$log_female
-CZ.glm$shape_ratio_int=CZ.glm$shape*CZ.glm$size_ratio
-CZ.glm$shape_ratio2_int=CZ.glm$shape*CZ.glm$size_ratio2
-CZ.glm$shape_ratio3_int=CZ.glm$shape*CZ.glm$size_ratio3
-CZ.glm$shape_shore_int=CZ.glm$shape*CZ.glm$shore
-CZ.glm$shore_fem_int=CZ.glm$shore*CZ.glm$log_female
-CZ.glm$shore_ratio_int=CZ.glm$shore*CZ.glm$size_ratio
-CZ.glm$shore_ratio2_int=CZ.glm$shore*CZ.glm$size_ratio2
-CZ.glm$shore_ratio3_int=CZ.glm$shore*CZ.glm$size_ratio3
+# CZ.glm$ref_ecotype=as.integer(CZ.glm$ref_ecotype) # 1 for crab and 2 for wave
+# CZ.glm$shore=as.integer(CZ.glm$shore) # 1 for CZA, 2 for CZB, 3 for CZC, 4 for CZD
+# CZ.glm$eco_fem_int=CZ.glm$ref_ecotype*CZ.glm$log_female
+# CZ.glm$eco_shape_int=CZ.glm$ref_ecotype*CZ.glm$shape
+# CZ.glm$eco_ratio_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio
+# CZ.glm$eco_ratio2_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio2
+# CZ.glm$eco_ratio3_int=CZ.glm$ref_ecotype*CZ.glm$size_ratio3
+# CZ.glm$eco_shore_int=CZ.glm$ref_ecotype*CZ.glm$shore
+# CZ.glm$shape_fem_int=CZ.glm$shape*CZ.glm$log_female
+# CZ.glm$shape_ratio_int=CZ.glm$shape*CZ.glm$size_ratio
+# CZ.glm$shape_ratio2_int=CZ.glm$shape*CZ.glm$size_ratio2
+# CZ.glm$shape_ratio3_int=CZ.glm$shape*CZ.glm$size_ratio3
+# CZ.glm$shape_shore_int=CZ.glm$shape*CZ.glm$shore
+# CZ.glm$shore_fem_int=CZ.glm$shore*CZ.glm$log_female
+# CZ.glm$shore_ratio_int=CZ.glm$shore*CZ.glm$size_ratio
+# CZ.glm$shore_ratio2_int=CZ.glm$shore*CZ.glm$size_ratio2
+# CZ.glm$shore_ratio3_int=CZ.glm$shore*CZ.glm$size_ratio3
 # colnames(CZ.glm)
 # yvar_id = which(names(CZ.glm)=="mountYNcontact")
 yvar_id = which(names(CZ.glm)==opt$variabley)
@@ -61,7 +61,13 @@ cat("\nSaving additive effects ...\n")
 CZ_form_add = names(CZ.glm)[-yvar_id]
 cat("\nSaving 2-way interaction effects ...\n")
 CZ_form_int = unlist(lapply(2, function(n) combn(CZ_form_add, n, FUN=function(row) paste0(row, collapse = ":"))))
-X = c(CZ_form_add, CZ_form_int)
+rm_inter = c("log_female:size_ratio", "log_female:size_ratio2", "log_female:size_ratio3", "size_ratio:size_ratio2",
+             "size_ratio:size_ratio3", "size_ratio2:size_ratio3")
+cat("\nAnd deleting\n", rm_inter, "\n...\n")
+CZ_form_subint = setdiff(CZ_form_int, rm_inter)
+# intersect(CZ_form_int, rm_inter)
+X = c(CZ_form_add, CZ_form_subint)
+cat("\nModels will be built using", length(X), "variables:\n", X, "\n")
 # X = X[1:6]
 cat("\nCreating models with additive effects and 2-way interactions ...\n")
 CZ_form = unlist(lapply(1:opt$npredictors, function(n) {
