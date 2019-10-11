@@ -225,7 +225,7 @@ ggplot(data = CZ_data) +
        y="probability of mating", col="") +
   scale_x_continuous(breaks = seq(-1.5,1.5,0.5)) +
   theme(legend.text = element_text(size = 15,face = "bold"), legend.position = 'none',
-        axis.title = element_text(face = "bold", size = 13),
+        axis.title = element_text(size = 13),
         # axis.ticks = element_line(size = 2),
         axis.text = element_text(size = 9))
   # grids(linetype = "dashed")

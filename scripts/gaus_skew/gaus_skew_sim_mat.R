@@ -450,6 +450,11 @@ CZ_am_ss_fig = lapply(seq_along(islands), function(i) {
 #########################
 # figures summary stats #
 #########################
+# CZA_sum = read.csv("manuscript/tables/CZA_cline_dimorph.csv")
+# CZB_sum = read.csv("manuscript/tables/CZB_cline_dimorph.csv")
+# CZC_sum = read.csv("manuscript/tables/CZC_cline_dimorph.csv")
+# CZD_sum = read.csv("manuscript/tables/CZD_cline_dimorph.csv")
+# CZ_am_ss_fig = list(CZA_sum, CZB_sum, CZC_sum, CZD_sum)
 cat("Preparing dataset for figure of the mating summary statistics ...\n")
 CZ_dss_fig = lapply(CZ_am_ss_fig, function(x) {
   x[x$figure=='DSS', ]
@@ -463,76 +468,130 @@ CZ_am_fig = lapply(CZ_am_ss_fig, function(x) {
 CZs_cline_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZs_phen_cline[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
-    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
+    geom_rect(aes(xmin=cline_pars[[pl]]['cl', 'Estimate'], xmax=cline_pars[[pl]]['cr', 'Estimate'],
+                  ymin=-Inf, ymax=Inf), fill="gray86") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed", size = 0.3) +
     scale_color_manual(values = c("red", "blue")) +
     scale_fill_manual(values = c("red", "blue")) +
     geom_ribbon(aes(x=position, ymin=abs(phen_cline)-sd_cline, ymax=abs(phen_cline)+sd_cline, fill=sex), alpha=0.15) +
     geom_errorbar(data = CZs_bin_cline[[pl]], aes(x=position[, 'mean'],
                                                   ymin=log_len[, 'lower'],
-                                                  ymax=log_len[, 'upper']), alpha=0.4, width=2) +
+                                                  ymax=log_len[, 'upper']), width=2, size = 0.3) +
     geom_point(data = CZs_bin_cline[[pl]], aes(x = position[, 'mean'],
                                                y = log_len[, 'mean'],
-                                               col=Group.2), size=0.7) +
-    geom_line(aes(position, abs(phen_cline), col=sex), size=0.9, alpha=0.7) +
+                                               col=Group.2), size=0.2) +
+    geom_line(aes(position, abs(phen_cline), col=sex), size=0.5, alpha=0.6) +
     labs(x = '', y = 'ln size', fill='', col='') +
-    theme(legend.position = 'top',
-          strip.text = element_text(face="bold", size=13),
-          strip.background = element_rect(fill="lightblue", colour="black",size=1),
-          legend.text = element_text(size = 13),
-          axis.title.y = element_text(face = "bold", size = 9))
+    theme(legend.position = 'top', legend.key.size = unit(0.4,"line"),
+          legend.justification="left", legend.margin=margin(6,-1,-4,8),
+          legend.box.margin=margin(-10,-10,-10,-10), legend.spacing.x = unit(0.05, 'cm'),
+          strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          legend.text = element_text(size = 3.5),
+          axis.text = element_text(size=4),
+          axis.title.y = element_text(size = 4.5),
+          axis.ticks = element_line(size = 0.2),
+          panel.background = element_rect(fill = "white"),
+          axis.line = element_line(size = 0.2, linetype = "solid",
+                                   colour = "black"))
+})
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_phen_cline.tiff"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_phen_cline.tiff"),
+         plot = CZs_cline_plot[[s]], device = "tiff", width = 3, height = 1.1, units = "in", dpi = 600)
 })
 CZs_dss_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_dss_fig[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
-    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
-    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val), size=0.8) +
-    geom_line(aes(x = position, y = mean_val), size=0.5) +
-    labs(x = '', y = paste0('mated males - all males\n(mean size)')) +
+    geom_rect(aes(xmin=cline_pars[[pl]]['cl', 'Estimate'], xmax=cline_pars[[pl]]['cr', 'Estimate'],
+                  ymin=-Inf, ymax=Inf), fill="gray86") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_hline(yintercept=0, linetype="dashed", size = 0.3) +
+    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), width=2, size = 0.3) +
+    geom_point(aes(x = position, y = mean_val), size=0.4) +
+    geom_line(aes(x = position, y = mean_val), size=0.3) +
+    labs(x = '', y = paste0('mated males - all males\n(mean ln size)')) +
     ylim(c(-0.2, 0.2)) +
-    theme(strip.text = element_text(face="bold", size=12),
-          strip.background = element_rect(fill="lightblue", colour="black",size=1),
-          axis.title.y = element_text(face = "bold", size = 9))
+    theme(strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          axis.title.y = element_text(size = 4.5),
+          axis.text = element_text(size=4),axis.ticks = element_line(size = 0.2),
+          panel.background = element_rect(fill = "white"),
+          axis.line = element_line(size = 0.2, linetype = "solid",
+                                   colour = "black"))
+})
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_dss.tiff"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_dss.tiff"),
+         plot = CZs_dss_plot[[s]], device = "tiff", width = 3, height = 1.1, units = "in", dpi = 600)
 })
 CZs_sss_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_sss_fig[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
-    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
-    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val), size=0.8) +
-    geom_line(aes(x = position, y = mean_val), size=0.5) +
-    labs(x = '', y = paste0('mated males - all males\n(variance size)')) +
+    geom_rect(aes(xmin=cline_pars[[pl]]['cl', 'Estimate'], xmax=cline_pars[[pl]]['cr', 'Estimate'],
+                  ymin=-Inf, ymax=Inf), fill="gray86") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_hline(yintercept=0, linetype="dashed", size = 0.3) +
+    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), width=2, size = 0.3) +
+    geom_point(aes(x = position, y = mean_val), size=0.4) +
+    geom_line(aes(x = position, y = mean_val), size=0.3) +
+    labs(x = '', y = paste0('mated males - all males\n(variance ln size)')) +
     ylim(c(-0.1, 0.1)) +
-    theme(strip.text = element_text(face="bold", size=12),
-          strip.background = element_rect(fill="lightblue", colour="black",size=1),
-          axis.title.y = element_text(face = "bold", size = 9))
+    theme(strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          axis.title.y = element_text(size = 4.5),
+          axis.text = element_text(size=4),axis.ticks = element_line(size = 0.2),
+          panel.background = element_rect(fill = "white"),
+          axis.line = element_line(size = 0.2, linetype = "solid",
+                                   colour = "black"))
+})
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_sss.tiff"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_sss.tiff"),
+         plot = CZs_sss_plot[[s]], device = "tiff", width = 3, height = 1.1, units = "in", dpi = 600)
 })
 CZs_am_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_am_fig[[pl]]) +
     facet_wrap(~figure, nrow = 1) +
-    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed") +
-    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed") +
-    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), alpha=0.4, width=2) +
-    geom_point(aes(x = position, y = mean_val), size=0.8) +
-    geom_line(aes(x = position, y = mean_val), size=0.5) +
+    geom_rect(aes(xmin=cline_pars[[pl]]['cl', 'Estimate'], xmax=cline_pars[[pl]]['cr', 'Estimate'],
+                  ymin=-Inf, ymax=Inf), fill="gray86") +
+    geom_vline(xintercept = cline_pars[[pl]]['cl', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_vline(xintercept = cline_pars[[pl]]['cr', 'Estimate'], linetype = "dashed", size = 0.3) +
+    geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), width=2, size = 0.3) +
+    geom_point(aes(x = position, y = mean_val), size=0.4) +
+    geom_line(aes(x = position, y = mean_val), size=0.3) +
     labs(x = paste0(islands[pl], " transect position"), y = expression(italic('r'))) +
     ylim(c(0,0.75)) +
-    theme(strip.text = element_text(face="bold", size=12),
-          strip.background = element_rect(fill="lightblue", colour="black",size=1),
-          axis.title.y = element_text(face = "bold", size = 9),
-          axis.title.x = element_text(face = "bold"))
+    theme(strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          axis.title.y = element_text(size = 4.5),
+          axis.title.x = element_text(size = 5),
+          axis.text = element_text(size=4),axis.ticks = element_line(size = 0.2),
+          panel.background = element_rect(fill = "white"),
+          axis.line = element_line(size = 0.2, linetype = "solid",
+                                   colour = "black"))
+})
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_am.tiff"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_am.tiff"),
+         plot = CZs_am_plot[[s]], device = "tiff", width = 3, height = 1.1, units = "in", dpi = 600)
 })
 CZs_cline_am_ss_plot = lapply(seq_along(islands), function(x) {
   CZs_cline_plot[[x]] + CZs_dss_plot[[x]] + CZs_sss_plot[[x]] + CZs_am_plot[[x]] + plot_layout(ncol = 1, heights = c(2,2,2,2))
 })
 lapply(seq_along(islands), function(s) {
-  cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"), "...\n")
-  ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"),
-         plot = CZs_cline_am_ss_plot[[s]], device = "pdf", width = 7, height = 8)
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_cline_am_ss.tiff"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_cline_am_ss.tiff"),
+         plot = CZs_cline_am_ss_plot[[s]], device = "tiff", width = 3, height = 4, units = "in", dpi = 600)
 })
+# lapply(seq_along(islands), function(s) {
+#   cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"), "...\n")
+#   ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"),
+#          plot = CZs_cline_am_ss_plot[[s]], device = "pdf", width = 7, height = 8)
+# })
 
 # ############
 # # 3D plots #
