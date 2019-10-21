@@ -2,6 +2,8 @@
 title: "Assortative mating, sexual selection and their consequences for gene flow in _Littorina_"
 date: "11th October 2019"
 author: "Samuel Perini et al."
+csl: evolution.xml
+bibliography: Lsax_mating.bib
 ---
 
 # MANUSCRIPT
