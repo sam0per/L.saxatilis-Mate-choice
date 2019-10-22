@@ -8,14 +8,15 @@ Models of assortative mating typically assume that individuals mate with similar
 ## Results
 
 ## Discussion  
-1. Assortment and how it varies along clines
+1. Assortment and how it varies along clines  
+Multiple factors can cause assortative mating such as mate availability and mating constraints [@crespi1989]. Can natural selection influence mate availability with different intensity across the wave-crab habitat boundary?
 
 2. Same for SS with comments about sexual dimorphism
 
 3. Lack of ecotype effects
 
 4. Ancestral nature of mating pattern  
-The absence of a clear and different mating pattern between Crab and Wave populations suggests that assortment by size was not simply a by-product of local adaptation but rather it existed before the formation of ecotypes. Imagine a population of snails where females tend to be overall larger than males. The common mating pattern would be for a female to pair more likely with a smaller male. This ancenstral mating bias due to sexual size dimorphism can generate stabilising sexual selection for smaller than average male size. If both environmental conditions and size variation allow for local adaptation, two distinct populations would form due to divergent natural selection on size and the combinaiton of the ancestral mating bias and the recent size divergence would reduce mating probability between the two ecotypes while mainting the same mating pattern. Conversely, we would have expected an obvious difference between Crab and Wave mating pattern if assortment originated as a by-product of ecological speciation.
+The absence of a clear and different mating pattern between Crab and Wave populations suggests that assortment by size was not simply a by-product of local adaptation but rather it existed before the formation of ecotypes. Imagine a population of snails where females tend to be overall larger than males. The common mating pattern would be for a female to pair more likely with a smaller male. This ancestral mating bias due to sexual size dimorphism can generate stabilising sexual selection for smaller than average male size. If both environmental conditions and size variation allow for local adaptation, two distinct populations would form due to divergent natural selection on size and the combination of the ancestral mating bias and the recent size divergence would reduce mating probability between the two ecotypes while maintaining the same mating pattern. Conversely, we would have expected an obvious difference between Crab and Wave mating pattern if assortment originated as a by-product of ecological speciation.  
 
 5. Barrier effects from Marina’s simulations
 
