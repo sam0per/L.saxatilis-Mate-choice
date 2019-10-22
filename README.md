@@ -20,7 +20,8 @@ The absence of a clear and different mating pattern between Crab and Wave popula
 
 5. Barrier effects from Marina’s simulations
 
-6. Some speculation about impact on the origin of ecotypes
+6. Some speculation about impact on the origin of ecotypes  
+A previous individual-based model predicted that pre-existing mating preferences were responsible for the inhibition of ecotype formation [@sadedin2009]
 
 7. Broader comparison (i.e. beyond Littorina) on multiple-effect traits and on barrier effects of assortment in HZs (compare to Irwin and to Jiggins & Mallet, maybe Wolf, maybe Gay et al.).
 
