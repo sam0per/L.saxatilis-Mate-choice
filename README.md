@@ -2,7 +2,8 @@
 
 ## Intro  
 Models of assortative mating typically assume that individuals mate with similar individuals with no difference in mating success. However, in natural populations where individuals mate assortatively, rare phenotypes undergo a mating disadvantage which can generate stabilising sexual selection [@kirkpatrickandnuismer2004].  
-List of studies where different directions of sexual selection have been modelled [@servedio2016]
+List of studies where different directions of sexual selection have been modelled [@servedio2016].  
+Sensory bias can be used as a case where sexual selection can take different selection and thus, either promote or impede complete reproductive isolation [@panhuis2001].
 
 ## Methods
 
@@ -14,7 +15,8 @@ Multiple factors can cause assortative mating such as mate availability and mati
 
 2. Same for SS with comments about sexual dimorphism
 
-3. Lack of ecotype effects
+3. Lack of ecotype effects  
+The evolution of a mating trait can be under sexual selection as females express preferences for certain trait values. These preferences can have originated because the male trait is an indicator of fitness (Fisherian runaway) but they can have also evolved independently from the male mating signal. A typical example of the latter situation is when a male trait arise and it is favoured by the female sensory bias [@basolo1990; @panhuis2001].
 
 4. Ancestral nature of mating pattern  
 The absence of a clear and different mating pattern between Crab and Wave populations suggests that assortment by size was not simply a by-product of local adaptation but rather it existed before the formation of ecotypes. Imagine a population of snails where females tend to be overall larger than males. The common mating pattern would be for a female to pair more likely with a smaller male. This ancestral mating bias due to sexual size dimorphism can generate stabilising sexual selection for smaller than average male size. If both environmental conditions and size variation allow for local adaptation, two distinct populations would form due to divergent natural selection on size and the combination of the ancestral mating bias and the recent size divergence would reduce mating probability between the two ecotypes while maintaining the same mating pattern. Conversely, we would have expected an obvious difference between Crab and Wave mating pattern if assortment originated as a by-product of ecological speciation.  
@@ -22,10 +24,12 @@ The absence of a clear and different mating pattern between Crab and Wave popula
 5. Barrier effects from Marina’s simulations
 
 6. Some speculation about impact on the origin of ecotypes  
-A previous individual-based model predicted that pre-existing mating preferences were responsible for the inhibition of ecotype formation [@sadedin2009]
+A previous individual-based model predicted that pre-existing mating preferences were responsible for the inhibition of ecotype formation [@sadedin2009]. Yet, in our simulations we were able to predict that assortative mating and sexual selection contribute to the reduction in gene flow between Crab and Wave populations. However, the sexual barrier is not a primary isolating component underlying the origin of ecotypes but it has instead evolved after local adaptation exploiting the pre-existing bias based on size. This is something that was not possible to test with our data but it is a likely hypothesis given the lack of ecotype effects on the mating pattern, the resulting direction of sexual selection from sexual size dimorphism and the evidence for the ecological barrier to gene glow between Crab and Wave populations. Another assumption that we make is that differences in size are correlated with differences in the female preferences as assortment in _L. saxatilis_ is considered to be under the phenotype matching or similarity-like rule. The correlation or coevolution between male sexually selected traits and female preferences is the first requirement for sexual selection being involved in speciation [@panhuis2001].
 
-7. Broader comparison (i.e. beyond Littorina) on multiple-effect traits and on barrier effects of assortment in HZs (compare to Irwin and to Jiggins & Mallet, maybe Wolf, maybe Gay et al.).
+7. Broader comparison (i.e. beyond Littorina) on multiple-effect traits and on barrier effects of assortment in HZs (compare to Irwin and to Jiggins & Mallet, maybe Wolf, maybe Gay et al.).  
+Speciation by sexual selection and assortative mating has been simulated in many theoretical studies but how this evolutionary process unfolds in natural populations remains a challenging task. One of the main advantage of models of speciation is ...  A general agreement across the different models of assortative mating is that ... [@kopp2018]. Theoretical results have been supported by a few empirical studies on model organisms ... For the majority of natural populations identifying the individual component of isolation and the genetic basis does still represent an obstacle for the evidence for the role of assortment and sexual selection in speciation. For example, ... [@panhuis2001]
 
+The underlying theory agrees on what is the most favourable scenario for the split of two species that are reproductively isolated and what is the scenario where speciation will be inhibited. There are examples in the wild of these two extremes but these are rarely encountered. Most of the biological cases will occur in between and they will also be influenced by a combination of components of isolation. For example, starting from a relatively simple scenario [@servedio2016] ... Moving onto hybrid zones [@irwin2019] ...
 
 
 # References
