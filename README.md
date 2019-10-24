@@ -1,7 +1,8 @@
 # TOADD
 
 ## Intro  
-Models of assortative mating typically assume that individuals mate with similar individuals with no difference in mating success. However, in natural populations where individuals mate assortatively, rare phenotypes undergo a mating disadvantage which can generate stabilising sexual selection [@kirkpatrickandnuismer2004].
+Models of assortative mating typically assume that individuals mate with similar individuals with no difference in mating success. However, in natural populations where individuals mate assortatively, rare phenotypes undergo a mating disadvantage which can generate stabilising sexual selection [@kirkpatrickandnuismer2004].  
+List of studies where different directions of sexual selection have been modelled [@servedio2016]
 
 ## Methods
 
