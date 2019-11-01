@@ -1,3 +1,26 @@
+---
+title: "Assortative mating, sexual selection and their consequences for gene flow in _Littorina_"
+author:
+  - Samuel Perini:
+      institute: tjarno
+      correspondence: "yes"
+      email: samuel.perini@gu.se
+  - Marina Rafajlović:
+      institute: tjarno
+  - Anja M. Westram:
+      institute: ist
+  - Kerstin Johannesson:
+      institute: tjarno
+  - Roger K. Butlin:
+      institute: shef
+institute:
+  - tjarno: Department of Marine Sciences, University of Gothenburg, 40530 Gothenburg, Sweden
+  - ist: IST Austria, Am Campus 1, 3400 Klosterneuburg, Austria
+  - shef: Department of Animal and Plant Sciences, University of Sheffield, UK
+csl: evolution.xml
+bibliography: Lsax_mating.bib
+---
+
 # TOADD
 
 ## Intro  
@@ -12,7 +35,7 @@ Sensory bias can be used as a case where sexual selection can take different sel
 ## Discussion  
 1. Assortment and how it varies along clines  
 Multiple factors can cause assortative mating such as mate availability and mating constraints [@crespi1989]. Can natural selection influence mate availability with different intensity across the wave-crab habitat boundary? and what about constraints due to different shell sizes?  
-Natural selection can also decrease the variance of the target trait over time and the level of this reduction does not have to be equal along the environmental cline. As the trait variance is reduced, more in one habitat than the other, the strength of assortment will also be reduced accordingly because assortment depends on the covariance of the female and male trait. Therefore, our inference of the strength of assortment is actually the likely result of a differential effect of natural selection on the size distribution of Crab and Wave populations.
+Natural selection can also decrease the variance of the target trait over time and the level of this reduction does not have to be equal along the environmental cline. As the trait variance is reduced, more in one habitat than the other, the strength of assortment will follow the same pattern of reduction because assortment depends on the covariance of the female and male trait. Therefore, our inference of the strength of assortment is actually the likely result of a differential effect of natural selection on the size distribution of Crab and Wave populations. Specifically, natural selection seems to act more strongly in the crab habitat compared to the wave habitat.
 
 2. Same for SS with comments about sexual dimorphism
 
