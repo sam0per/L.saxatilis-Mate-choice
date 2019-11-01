@@ -11,7 +11,8 @@ Sensory bias can be used as a case where sexual selection can take different sel
 
 ## Discussion  
 1. Assortment and how it varies along clines  
-Multiple factors can cause assortative mating such as mate availability and mating constraints [@crespi1989]. Can natural selection influence mate availability with different intensity across the wave-crab habitat boundary?
+Multiple factors can cause assortative mating such as mate availability and mating constraints [@crespi1989]. Can natural selection influence mate availability with different intensity across the wave-crab habitat boundary? and what about constraints due to different shell sizes?  
+Natural selection can also decrease the variance of the target trait over time and the level of this reduction does not have to be equal along the environmental cline. As the trait variance is reduced, more in one habitat than the other, the strength of assortment will also be reduced accordingly because assortment depends on the covariance of the female and male trait. Therefore, our inference of the strength of assortment is actually the likely result of a differential effect of natural selection on the size distribution of Crab and Wave populations.
 
 2. Same for SS with comments about sexual dimorphism
 
