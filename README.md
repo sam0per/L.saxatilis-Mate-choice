@@ -16,12 +16,15 @@ author:
 institute:
   - tjarno: Department of Marine Sciences, University of Gothenburg, 40530 Gothenburg, Sweden
   - ist: IST Austria, Am Campus 1, 3400 Klosterneuburg, Austria
-  - shef: Department of Animal and Plant Sciences, University of Sheffield, UK
+  - shef: Department of Animal and Plant Sciences, University of Sheffield, UK, S10 2TN
 csl: evolution.xml
 bibliography: Lsax_mating.bib
 ---
 
 # TOADD
+
+## Abstract  
+New species can form even though there is exchange of genes or migrants. Under a scenario where divergent populations are connected by gene flow, the establishment of complete reproductive isolation requires the joint action of multiple barriers to gene flow. Such barriers can be represented by biological traits and the lower the number of these traits is the lower is the opportunity for recombination to break apart the association between barriers to gene flow.
 
 ## Intro  
 Models of assortative mating typically assume that individuals mate with similar individuals with no difference in mating success. However, in natural populations where individuals mate assortatively, rare phenotypes undergo a mating disadvantage which can generate stabilising sexual selection [@kirkpatrickandnuismer2004].  
