@@ -31,6 +31,8 @@ Models of assortative mating typically assume that individuals mate with similar
 List of studies where different directions of sexual selection have been modelled [@servedio2016].  
 Sensory bias can be used as a case where sexual selection can take different selection and thus, either promote or impede complete reproductive isolation [@panhuis2001].
 
+Swedish _L. saxatilis_ ecotype-based assortative mating isolation index of 0.6 [@sadedin2009].
+
 ## Methods
 
 ## Results
