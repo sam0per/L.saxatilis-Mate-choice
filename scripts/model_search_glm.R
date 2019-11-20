@@ -81,3 +81,8 @@ CZ_crit = bind_rows(lapply(CZ_form, function(frml) {
 }))
 cat("\nSaving summary stats in", opt$output, "...\n")
 write.csv(x = CZ_crit, file = opt$output, row.names = FALSE)
+
+# head(CZ_data)
+# CZ_data$size_ratio3 = CZ_data$size_ratio^3
+# data.frame(est = round(coef(glm(formula = mountYNcontact ~ size_ratio+size_ratio2+log_female:shore+shape:ref_ecotype+size_ratio:ref_ecotype+shore:size_ratio3,
+#                                 family = binomial(link = "logit"), data = CZ_data)), 2))

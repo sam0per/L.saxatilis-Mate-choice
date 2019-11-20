@@ -222,6 +222,7 @@ pref_out = lapply(c("B_all", "C_all", "D_all", "ALPHA_all"), function(m) {
 })
 
 CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)[,-1]
+head(CZ_matrix)
 gaus_skew = lapply(seq_along(pref_out), function(x) {
   gmod = readRDS(paste0("models/", pref_out[[x]], basename(dirname(pref_out[[x]])),".rds"))
   # print(gmod@model_pars[1:5])
@@ -244,9 +245,10 @@ gaus_skew = lapply(seq_along(pref_out), function(x) {
 isl = 1
 hypp = c("Ball", "Call", "Dall", "ALPHAall")
 gaus_skew[[isl]]
+alpha_pars = gaus_skew[[4]]$parameter
 # gaus_skew[[isl]]$fig = "b[1]-hierarchical\nIsland and test sex effect"
 # gaus_skew[[isl]]$parameter = as.numeric(gaus_skew[[isl]]$parameter)
-gaus_skew[[3]]$parameter
+gaus_skew[[4]]$parameter = gaus_skew[[2]]$parameter
 gaus_skew[[isl]]$parameter = gaus_skew[[3]]$parameter
 gaus_skew[[isl]]$parameter = gsub(pattern = "d_", replacement = "b[1]_", x = gaus_skew[[isl]]$parameter)
 gaus_skew[[isl]]$parameter = gsub(pattern = "b_", replacement = "c_", x = gaus_skew[[isl]]$parameter)
@@ -256,14 +258,14 @@ gaus_skew[[isl]]$parameter = factor(gaus_skew[[isl]]$parameter,
                                                                                    decreasing = TRUE))])
 # gaus_skew[[1]]$parameter[1] = "b[1]-intercept"
 str(gaus_skew[[isl]])
-gaus_skew[[isl]]$fig = "c-hierarchical\nIsland and reference ecotype effect"
+gaus_skew[[isl]]$fig = paste0(hypp[2], "-hierarchical\nIsland and transect sex effect")
 tiff(filename = paste0("manuscript/figures/S2_FIG1a_",hypp[isl], ".tiff"), width = 2, height = 2, units = "in",
      res = 600)
 # pdf(file = "manuscript/figures/S2_FIG1a_Call.pdf", width = 4, height = 4)
 ggplot(data = gaus_skew[[isl]]) +
   facet_wrap(~fig) +
   # geom_segment(aes(x=-Inf, xend=Inf, y=10.5, yend=10.5), linetype = "dashed", size = 0.3, col = "grey80") +
-  # geom_segment(aes(x=0, xend=0, y=-Inf, yend=10.5), linetype = "dashed", size = 0.3, col = "grey80") +
+  geom_segment(aes(x=0, xend=0, y=-Inf, yend=10.5), linetype = "dashed", size = 0.3, col = "grey80") +
   geom_errorbarh(aes(xmax = `2.5%`, xmin = `97.5%`, y = parameter, height = 0, col = "95% CI"), size = 0.4) +
   geom_errorbarh(aes(xmax = `25%`, xmin = `75%`, y = parameter, height = 0, col = "50% CI"), size = 0.5) +
   geom_point(aes(x = mean, y = parameter, col = "odot"), size = 0.2) +
@@ -272,6 +274,8 @@ ggplot(data = gaus_skew[[isl]]) +
   # scale_colour_brewer(type = "qual", palette = 8, direction = 1) +
   # scale_color_viridis_d(begin = 0, end = 1, option = "A", direction = -1) +
   # scale_y_continuous(breaks = seq(1,11,1)) +
+  # scale_x_continuous(breaks = seq(-0.5,2,0.5)) +
+  xlim(-1,3) +
   theme(legend.position = "none", axis.title = element_blank(), axis.text = element_text(size = 3),
         axis.ticks = element_line(size = 0.3),
         strip.text = element_text(face="bold", size=5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
@@ -305,6 +309,7 @@ lapply(seq_along(pref_out), function(x) {
 ##############################
 pref_out = "gaus_skew/BCDG/gaus_skew_hier_"
 CZ_matrix = model.matrix(mountYNcontact ~ shore + ref_ecotype + test_sex * shape, data = CZ_data)[,-1]
+head(CZ_matrix)
 gmod = readRDS(paste0("models/", pref_out, basename(dirname(pref_out)),".rds"))
 gmod@model_pars
 hyp_nm = c("b", "c", "d", "alpha")
