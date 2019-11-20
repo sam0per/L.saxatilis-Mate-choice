@@ -487,12 +487,14 @@ CZs_cline_plot = lapply(seq_along(islands), function(pl) {
           legend.justification="left", legend.margin=margin(6,-1,-4,8),
           legend.box.margin=margin(-10,-10,-10,-10), legend.spacing.x = unit(0.05, 'cm'),
           strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.4),
           legend.text = element_text(size = 3.5),
-          axis.text = element_text(size=4),
+          axis.text.y = element_text(size=4),
+          axis.text.x = element_blank(),
           axis.title.y = element_text(size = 4.5),
           axis.ticks = element_line(size = 0.2),
-          panel.background = element_rect(fill = "white"),
+          panel.background = element_blank(),
+          panel.border = element_rect(colour = "black", fill=NA, size=0.4),
           axis.line = element_line(size = 0.2, linetype = "solid",
                                    colour = "black"))
 })
@@ -500,6 +502,11 @@ lapply(seq_along(islands), function(s) {
   cat("Saving", paste0("manuscript/figures/", islands[s], "_phen_cline.tiff"), "...\n")
   ggsave(filename = paste0("manuscript/figures/", islands[s], "_phen_cline.tiff"),
          plot = CZs_cline_plot[[s]], device = "tiff", width = 3, height = 1.1, units = "in", dpi = 600)
+})
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_phen_cline.svg"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_phen_cline.svg"),
+         plot = CZs_cline_plot[[s]], width = 6, height = 3)
 })
 CZs_dss_plot = lapply(seq_along(islands), function(pl) {
   ggplot(data = CZ_dss_fig[[pl]]) +
@@ -515,10 +522,13 @@ CZs_dss_plot = lapply(seq_along(islands), function(pl) {
     labs(x = '', y = paste0('mated males - all males\n(mean ln size)')) +
     ylim(c(-0.2, 0.2)) +
     theme(strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          strip.background = element_rect(fill="lightblue", colour="black",size=0.4),
           axis.title.y = element_text(size = 4.5),
-          axis.text = element_text(size=4),axis.ticks = element_line(size = 0.2),
-          panel.background = element_rect(fill = "white"),
+          axis.text.y = element_text(size=4),
+          axis.ticks = element_line(size = 0.2),
+          axis.text.x = element_blank(),
+          panel.background = element_blank(),
+          panel.border = element_rect(colour = "black", fill=NA, size=0.4),
           axis.line = element_line(size = 0.2, linetype = "solid",
                                    colour = "black"))
 })
@@ -538,13 +548,16 @@ CZs_sss_plot = lapply(seq_along(islands), function(pl) {
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), width=2, size = 0.3) +
     geom_point(aes(x = position, y = mean_val), size=0.4) +
     geom_line(aes(x = position, y = mean_val), size=0.3) +
-    labs(x = '', y = paste0('mated males - all males\n(variance ln size)')) +
+    labs(x = paste0(islands[pl], " transect position"), y = paste0('mated males - all males\n(variance ln size)')) +
     ylim(c(-0.1, 0.1)) +
     theme(strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          strip.background = element_rect(fill="lightblue", colour="black", size=0.4),
           axis.title.y = element_text(size = 4.5),
-          axis.text = element_text(size=4),axis.ticks = element_line(size = 0.2),
-          panel.background = element_rect(fill = "white"),
+          axis.title.x = element_text(size = 6),
+          axis.text = element_text(size=4),
+          axis.ticks = element_line(size = 0.2),
+          panel.background = element_blank(),
+          panel.border = element_rect(colour = "black", fill=NA, size=0.4),
           axis.line = element_line(size = 0.2, linetype = "solid",
                                    colour = "black"))
 })
@@ -563,14 +576,18 @@ CZs_am_plot = lapply(seq_along(islands), function(pl) {
     geom_errorbar(aes(x=position, ymin=low_val, ymax=upp_val), width=2, size = 0.3) +
     geom_point(aes(x = position, y = mean_val), size=0.4) +
     geom_line(aes(x = position, y = mean_val), size=0.3) +
-    labs(x = paste0(islands[pl], " transect position"), y = expression(italic('r'))) +
+    labs(x = "", y = expression(italic('r'))) +
     ylim(c(0,0.75)) +
     theme(strip.text = element_text(size=4.5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
-          strip.background = element_rect(fill="lightblue", colour="black",size=0.5),
+          strip.background = element_rect(fill="lightblue", colour="black", size=0.4),
           axis.title.y = element_text(size = 4.5),
-          axis.title.x = element_text(size = 5),
-          axis.text = element_text(size=4),axis.ticks = element_line(size = 0.2),
-          panel.background = element_rect(fill = "white"),
+          # axis.title.x = element_text(size = 5),
+          axis.text.y = element_text(size=4),
+          axis.text.x = element_blank(),
+          axis.ticks = element_line(size = 0.2),
+          panel.background = element_blank(),
+          # panel.background = element_rect(fill = "white", size = 0.5),
+          panel.border = element_rect(colour = "black", fill=NA, size=0.4),
           axis.line = element_line(size = 0.2, linetype = "solid",
                                    colour = "black"))
 })
@@ -580,12 +597,17 @@ lapply(seq_along(islands), function(s) {
          plot = CZs_am_plot[[s]], device = "tiff", width = 3, height = 1.1, units = "in", dpi = 600)
 })
 CZs_cline_am_ss_plot = lapply(seq_along(islands), function(x) {
-  CZs_cline_plot[[x]] + CZs_dss_plot[[x]] + CZs_sss_plot[[x]] + CZs_am_plot[[x]] + plot_layout(ncol = 1, heights = c(2,2,2,2))
+  CZs_cline_plot[[x]] + CZs_am_plot[[x]] + CZs_dss_plot[[x]] + CZs_sss_plot[[x]] + plot_layout(ncol = 1, heights = c(2,2,2,2))
 })
 lapply(seq_along(islands), function(s) {
   cat("Saving", paste0("manuscript/figures/", islands[s], "_cline_am_ss.tiff"), "...\n")
   ggsave(filename = paste0("manuscript/figures/", islands[s], "_cline_am_ss.tiff"),
          plot = CZs_cline_am_ss_plot[[s]], device = "tiff", width = 3, height = 4, units = "in", dpi = 600)
+})
+lapply(seq_along(islands), function(s) {
+  cat("Saving", paste0("manuscript/figures/", islands[s], "_cline_am_ss.svg"), "...\n")
+  ggsave(filename = paste0("manuscript/figures/", islands[s], "_cline_am_ss.svg"),
+         plot = CZs_cline_am_ss_plot[[s]], width = 3, height = 5)
 })
 # lapply(seq_along(islands), function(s) {
 #   cat("Saving", paste0("figures/", pref_out, islands[s], "_cline_am_ss.pdf"), "...\n")
