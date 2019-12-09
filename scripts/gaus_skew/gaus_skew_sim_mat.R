@@ -282,7 +282,7 @@ sim_mat = function(pos, isl, run) {
   YNvar = var(bar$male)
   AM_SS = data.frame(am_r = Ycor, male_mated_mean = Ymean, male_mated_var = Yvar, male_all_mean = YNmean,
                      male_all_var = YNvar)
-  write.table(AM_SS, file = paste0("tables/", pref_out, "stats/", islands[isl], "_", round(pos), "_AM_SS_stats_", run, ".csv"),
+  write.table(AM_SS, file = paste0("tables/", pref_out, "/stats/", islands[isl], "_", round(pos), "_AM_SS_stats_", run, ".csv"),
               append = TRUE, sep = ",", row.names = FALSE, col.names = FALSE)
   return(bar)
 }
@@ -323,7 +323,7 @@ map(1:numrun, function(n) {
                   row.names = FALSE, col.names = TRUE)
       write.table(data.frame(am_r=as.numeric(), male_mated_mean=as.numeric(), male_mated_var=as.numeric(),
                              male_all_mean=as.numeric(), male_all_var=as.numeric(), stringsAsFactors=FALSE),
-                  file = paste0("tables/", pref_out, "stats/", islands[x], "_", round(cline_pos),
+                  file = paste0("tables/", pref_out, "/stats/", islands[x], "_", round(cline_pos),
                                 "_AM_SS_stats_", n, ".csv"), sep = ",", row.names = FALSE, col.names = TRUE)
       simYN = possibly(sim_mat, otherwise = "Missing snails")
       outYN = simYN(pos = cline_pos, isl = x, run = n)
