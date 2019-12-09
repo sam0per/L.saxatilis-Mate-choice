@@ -269,7 +269,7 @@ sim_mat = function(pos, isl, run) {
         cat(islands[isl], "at position", pos, ": male size", m, "mated female size", fem, ".\n")
       }
     }
-    write.table(YN, file = paste0("tables/", pref_out, islands[isl], "_", round(pos), "_sim_YN.csv"), append = TRUE,
+    write.table(YN, file = paste0("tables/", pref_out, "/", islands[isl], "_", round(pos), "_sim_YN.csv"), append = TRUE,
                 sep = ",", row.names = FALSE, col.names = FALSE)
     bar[[f]] = YN
     YN = data.frame()
