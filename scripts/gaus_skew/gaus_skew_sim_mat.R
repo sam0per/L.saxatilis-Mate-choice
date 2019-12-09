@@ -245,7 +245,7 @@ sim_mat = function(pos, isl, run) {
     # fem = fml_dtr[2]
     while (!success) {
       # m = sample(ml_dtr, 1, replace = FALSE)
-      mpos = pos + rnorm(n=1, mean=0, sd=1.5)
+      mpos = pos + rnorm(n=1, mean=0, sd=1)
       mal_cline = cline_sims(phen = -log(CZ_data[CZ_data$shore==islands[isl],]$length_mm),
                              position = mpos, sex = 'male',
                              cl = cline_pars[[isl]]['cl', 'Estimate'], cr = cline_pars[[isl]]['cr', 'Estimate'],
