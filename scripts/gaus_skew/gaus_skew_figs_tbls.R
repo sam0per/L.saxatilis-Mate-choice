@@ -331,23 +331,26 @@ gaus_skew = lapply(seq_along(hyp_nm), function(h) {
   stan_val = mutate(.data = stan_val, fig = paste("Hyperparameter", greek_px, sep = " "))
   return(stan_val)
 })
-isl = 1
+isl = 4
 hypp = c("BCDG_Bhyp", "BCDG_Chyp", "BCDG_Dhyp", "BCDG_ALPHAhyp")
 gaus_skew[[isl]]
-if (isl == 1) {
-  gaus_skew[[isl]]$fig = "b[1]-hyperparameter\nIsland and test sex effect"
-} else if (isl == 2) {
-  gaus_skew[[isl]]$fig = "c-hyperparameter\nIsland and ecotype effect"
-} else {
-  gaus_skew[[isl]]$fig = paste0(hyp_nm[isl], "-hyperparameter\nno additional effect")
-}
+gaus_skew[[isl]]$fig = "c-hyperparameter\nIsland and ecotype effect"
+alpha_pars = gaus_skew[[4]]$parameter
+gaus_skew[[4]]$parameter = gaus_skew[[2]]$parameter
+# if (isl == 1) {
+#   gaus_skew[[isl]]$fig = "b[1]-hyperparameter\nIsland and test sex effect"
+# } else if (isl == 2) {
+#   gaus_skew[[isl]]$fig = "c-hyperparameter\nIsland and ecotype effect"
+# } else {
+#   gaus_skew[[isl]]$fig = paste0(hyp_nm[isl], "-hyperparameter\nno additional effect")
+# }
 tiff(filename = paste0("manuscript/figures/S1_FIG1b_",hypp[isl], ".tiff"), width = 2, height = 2, units = "in",
      res = 600)
 # pdf(file = "manuscript/figures/S2_FIG1a_Call.pdf", width = 4, height = 4)
 ggplot(data = gaus_skew[[isl]]) +
   facet_wrap(~fig) +
   # geom_segment(aes(x=-Inf, xend=Inf, y=10.5, yend=10.5), linetype = "dashed", size = 0.3, col = "grey80") +
-  # geom_segment(aes(x=0, xend=0, y=-Inf, yend=10.5), linetype = "dashed", size = 0.3, col = "grey80") +
+  geom_segment(aes(x=0, xend=0, y=-Inf, yend=7.5), linetype = "dashed", size = 0.3, col = "grey80") +
   geom_errorbarh(aes(xmax = `2.5%`, xmin = `97.5%`, y = parameter, height = 0, col = "95% CI"), size = 0.4) +
   geom_errorbarh(aes(xmax = `25%`, xmin = `75%`, y = parameter, height = 0, col = "50% CI"), size = 0.5) +
   geom_point(aes(x = mean, y = parameter, col = "odot"), size = 0.2) +
@@ -356,6 +359,7 @@ ggplot(data = gaus_skew[[isl]]) +
   # scale_colour_brewer(type = "qual", palette = 8, direction = 1) +
   # scale_color_viridis_d(begin = 0, end = 1, option = "A", direction = -1) +
   # scale_y_continuous(breaks = seq(1,11,1)) +
+  xlim(-1,2) +
   theme(legend.position = "none", axis.title = element_blank(), axis.text = element_text(size = 3),
         axis.ticks = element_line(size = 0.3),
         strip.text = element_text(size=5, margin = margin(t = 2, r = 2, b = 2, l = 2)),
