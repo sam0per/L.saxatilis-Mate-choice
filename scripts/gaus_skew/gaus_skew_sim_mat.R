@@ -319,7 +319,7 @@ map(1:numrun, function(n) {
     map(isl_pos[[x]], function(y) {
       cline_pos = y
       write.table(data.frame(male=as.numeric(), female=as.numeric(), sk_prob=as.numeric(), mountYN=as.integer(), stringsAsFactors=FALSE),
-                  file = paste0("tables/", pref_out, islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
+                  file = paste0("tables/", pref_out, "/", islands[x], "_", round(cline_pos), "_sim_YN.csv"), sep = ",",
                   row.names = FALSE, col.names = TRUE)
       write.table(data.frame(am_r=as.numeric(), male_mated_mean=as.numeric(), male_mated_var=as.numeric(),
                              male_all_mean=as.numeric(), male_all_var=as.numeric(), stringsAsFactors=FALSE),
