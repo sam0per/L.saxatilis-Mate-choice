@@ -45,6 +45,7 @@ if (is.null(opt$modelone) | is.null(opt$focus)) {
 # mod1 = readRDS("models/gaus_skew/gaus_skew.rds")
 cat("Reading model", opt$focus, "\n")
 focus = readRDS(opt$focus)
+# focus = readRDS("models/gaus_skew/BCDG/gaus_skew_hier_BCDG.rds")
 cat("Reading model", opt$modelone, "\n")
 mod1 = readRDS(opt$modelone)
 # mod2 = readRDS("models/gaus_skew/gaus_skew_hier_BCDG_shore.rds")

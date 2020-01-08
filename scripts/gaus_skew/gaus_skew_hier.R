@@ -38,7 +38,7 @@ if (is.null(opt$data) | is.null(opt$stanfile) | is.null(opt$iterations)) {
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 CZ_data = read.csv(opt$data, sep = ";")
 pref_out = opt$output
-# pref_out = "gaus_skew/Dhyp_sex/gaus_skew_hier_Dhyp_sex"
+# pref_out = "gaus_skew/BCDG/gaus_skew_hier_BCDG.rds"
 lapply(c("tables", "figures", "models"), function(d) dir.create(file.path(d, dirname(pref_out))))
 pred_mx = opt$predictors
 
@@ -97,6 +97,44 @@ if (hier_hyp_px=="b_") {
                    list(alpha_intercept=2.32, alpha_coeff=rep(0,ncol(CZ_matrix)), b_par=0.4, c_par=-0.17, d_par=0.85))
 }
 
+# start_val = list(list(b_intercept=0.4,
+#                       c_intercept=-0.17,
+#                       d_intercept=0.85,
+#                       alpha_intercept=2.32,
+#                       b_coeff=rep(0,ncol(CZ_matrix)),
+#                       c_coeff=rep(0,ncol(CZ_matrix)),
+#                       d_coeff=rep(0,ncol(CZ_matrix)),
+#                       alpha_coeff=rep(0,ncol(CZ_matrix))),
+#                  list(b_intercept=0.4,
+#                       c_intercept=-0.17,
+#                       d_intercept=0.85,
+#                       alpha_intercept=2.32,
+#                       b_coeff=rep(0,ncol(CZ_matrix)),
+#                       c_coeff=rep(0,ncol(CZ_matrix)),
+#                       d_coeff=rep(0,ncol(CZ_matrix)),
+#                       alpha_coeff=rep(0,ncol(CZ_matrix))),
+#                  list(b_intercept=0.4,
+#                       c_intercept=-0.17,
+#                       d_intercept=0.85,
+#                       alpha_intercept=2.32,
+#                       b_coeff=rep(0,ncol(CZ_matrix)),
+#                       c_coeff=rep(0,ncol(CZ_matrix)),
+#                       d_coeff=rep(0,ncol(CZ_matrix)),
+#                       alpha_coeff=rep(0,ncol(CZ_matrix))),
+#                  list(b_intercept=0.4,
+#                       c_intercept=-0.17,
+#                       d_intercept=0.85,
+#                       alpha_intercept=2.32,
+#                       b_coeff=rep(0,ncol(CZ_matrix)),
+#                       c_coeff=rep(0,ncol(CZ_matrix)),
+#                       d_coeff=rep(0,ncol(CZ_matrix)),
+#                       alpha_coeff=rep(0,ncol(CZ_matrix))))
+# 
+# skew_hier = rstan::stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_interc_matrix.stan",
+#                         data = dat, iter = 8000, warmup = 2000,
+#                         chains=4, refresh=8000, init = start_val,
+#                         control = list(adapt_delta = 0.95, max_treedepth = 15))
+
 if (dim(CZ_matrix)[2] == 1) {
   dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_ratio,
              X = CZ_matrix[,1])
@@ -108,11 +146,6 @@ if (dim(CZ_matrix)[2] == 1) {
 skew_hier = rstan::stan(file = opt$stanfile, data = dat, iter = opt$iterations, warmup = opt$iterations/4,
                         chains=opt$chains, refresh=opt$iterations, init = start_val,
                         control = list(adapt_delta = 0.95, max_treedepth = 15))
-
-# skew_hier = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew_hier_interc_matrix.stan",
-#                         data = dat, iter = 8000, warmup = 2000,
-#                         chains=4, refresh=8000, init = start_val,
-#                         control = list(adapt_delta = 0.95, max_treedepth = 15))
 
 
 cat("Saving", basename(pref_out), "Stan model file ...\n")
@@ -126,6 +159,8 @@ saveRDS(skew_hier, paste0("models/", pref_out, ".rds"))
 
 if (sum(grepl(pattern = "intercept", skew_hier@model_pars)) == 1) {
   hier_pars = skew_hier@model_pars[1:5]
+} else if (sum(grepl(pattern = "intercept", skew_hier@model_pars)) == 4) {
+  hier_pars = skew_hier@model_pars[1:8]
 } else {
   hier_pars = skew_hier@model_pars[1:4]
 }

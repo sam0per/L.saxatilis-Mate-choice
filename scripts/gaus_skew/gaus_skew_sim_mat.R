@@ -357,7 +357,7 @@ map(1:numrun, function(n) {
 # mating summary stats #
 ########################
 CZs_join_runs = function(isls, pos) {
-  run_fl = list.files(path = paste0("tables/", pref_out, "stats"), pattern = paste0(isls, "_", pos, "_"),
+  run_fl = list.files(path = paste0("tables/", pref_out, "/stats"), pattern = paste0(isls, "_", pos, "_"),
                       full.names = TRUE)
   lapply(1:numrun, function(r) {read.csv(run_fl[r])})
 }
