@@ -44,7 +44,7 @@ dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_r
 # dat$posterior_predictive = 1
 # fit.prior.pred = stan(file = "scripts/CZ_mating_gaus_prior_size.stan", data = dat)
 
-gaus_skew = rstan::stan(file = "../L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
+gaus_skew = rstan::stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
                         data = dat, iter = 8000, warmup = 2000,
                         chains=4, refresh=8000,
                         control = list(adapt_delta = 0.90, max_treedepth = 15))
@@ -54,15 +54,15 @@ saveRDS(gaus_skew, "models/gaus_skew/SKEW/gaus_skew.rds")
 # plot post distr gaus skew #
 #############################
 # gaus_skew = readRDS("models/gaus_skew/gaus_skew.rds")
-gaus_skew@model_pars
-gaus_size_pars = c("b","c","d","alpha")
-# gaus_size_pars = c("b0","b1","c","d","alpha")
+# gaus_skew@model_pars
+# gaus_size_pars = c("b","c","d","alpha")
+gaus_size_pars = c("b0","b1","c","d","alpha")
 #gaus_size_parfig = c("preference","choosiness","asymmetry")
 
 list_of_draws <- rstan::extract(gaus_skew)
-names(list_of_draws) = c("b","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
-# names(list_of_draws) = c("b0","b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
-names(list_of_draws)
+# names(list_of_draws) = c("b","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
+names(list_of_draws) = c("b0","b1","c","d","alpha", "y_hat", "log_lik", "y_rep", "lp__")
+# names(list_of_draws)
 parfig = lapply(gaus_size_pars, function(x) {
   ggplot() +
     geom_density(aes(x = list_of_draws[[x]], y = ..scaled..), fill='red', col='black') +
@@ -82,14 +82,14 @@ opt = function(b, c, alpha, d, x){
      (0.797884 * alpha * d * exp(-(0.5 * alpha^2 * (c - x)^2)/d^2) -
         (x - c) * (erf((0.707107 * alpha * (x - c))/d) + 1)))/d^2
 }
-pars = list(b = list_of_draws$b, c = list_of_draws$c, alpha = list_of_draws$alpha,
+pars = list(b = list_of_draws$b1, c = list_of_draws$c, alpha = list_of_draws$alpha,
             d = list_of_draws$d)
 
 # find the root of the derivative
 #str(xmin <- uniroot(opt, c(0, 1), tol = 0.0001, scale = 0.44, preference = -0.07, asymmetry = 1.35, choosiness = 0.67))
 
 opt_draws = sapply(1:24000, function(z){
-  uniroot(opt, c(0, 1), tol = 0.0001, alpha = pars[['alpha']][z], b = pars[['b']][z],
+  uniroot(opt, c(0, 1), tol = 0.0001, alpha = pars[['alpha']][z], b = pars[['b1']][z],
           c = pars[['c']][z], d = pars[['d']][z])$root
 })
 
@@ -105,7 +105,7 @@ parfig$opt = opt_dens
 
 pdf("figures/gaus_skew/SKEW/gaus_skew_pars_dens.pdf",width = 10, height = 7)
 #do.call(ggarrange, parfig)
-ggarrange(parfig$b, parfig$c, parfig$d, parfig$alpha, parfig$opt)
+ggarrange(parfig$b0, parfig$b1, parfig$c, parfig$d, parfig$alpha, parfig$opt)
 dev.off()
 
 
@@ -114,12 +114,12 @@ dev.off()
 #########################
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # CZ_data = read.csv("data/CZ_all_mating_clean_copy.csv", sep = ";")
-gaus_skew@model_pars
-gaus_skew_pars = c("b_par","c_par","d_par","alpha_par")
+# gaus_skew@model_pars
+gaus_skew_pars = c("b0_par","b1_par","c_par","d_par","alpha_par")
 # gaus_skew_pars = c("level","scale","preference","choosiness","asymmetry")
 
 (skew_params = round(summary(gaus_skew, pars = gaus_skew_pars, probs=c(0.025, 0.975))$summary,2))
-rownames(skew_params) = c("b","c","d","alpha")
+rownames(skew_params) = c("b0","b1","c","d","alpha")
 # class(gaus_skew)
 
 y_hat = summary(gaus_skew, pars = c("y_hat"))$summary[,'mean']
