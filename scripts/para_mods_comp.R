@@ -83,7 +83,7 @@ loo_ls = parallel::mclapply(seq_along(mod_ls), function(m) {loo(loglik_ls[[m]], 
 lapply(seq_along(mod_ls), function(m) {
   cat("LOO results for model", basename(mod_str[m]), "\n")
   print(loo_ls[[m]])
-  out_loo_ls = paste0(opt$out, "loo_", out_comp_str[[m]], ".csv")
+  out_loo_ls = paste0("tables/mods_comp/", "loo_", out_comp_str[[m]], ".csv")
   cat("Writing output", out_loo_ls, "...\n")
   write.table(round(loo_ls[[m]]$estimates, 2), out_loo_ls, sep = ",", row.names = TRUE, col.names = TRUE)
 })

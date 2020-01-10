@@ -82,14 +82,14 @@ opt = function(b, c, alpha, d, x){
      (0.797884 * alpha * d * exp(-(0.5 * alpha^2 * (c - x)^2)/d^2) -
         (x - c) * (erf((0.707107 * alpha * (x - c))/d) + 1)))/d^2
 }
-pars = list(b = list_of_draws$b1, c = list_of_draws$c, alpha = list_of_draws$alpha,
-            d = list_of_draws$d)
+pars = list(b = list_of_draws$b1_par, c = list_of_draws$c_par, alpha = list_of_draws$alpha_par,
+            d = list_of_draws$d_par)
 
 # find the root of the derivative
 #str(xmin <- uniroot(opt, c(0, 1), tol = 0.0001, scale = 0.44, preference = -0.07, asymmetry = 1.35, choosiness = 0.67))
 
 opt_draws = sapply(1:24000, function(z){
-  uniroot(opt, c(0, 1), tol = 0.0001, alpha = pars[['alpha']][z], b = pars[['b1']][z],
+  uniroot(opt, c(0, 1), tol = 0.0001, alpha = pars[['alpha']][z], b = pars[['b']][z],
           c = pars[['c']][z], d = pars[['d']][z])$root
 })
 
@@ -115,7 +115,8 @@ dev.off()
 # CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 # CZ_data = read.csv("data/CZ_all_mating_clean_copy.csv", sep = ";")
 # gaus_skew@model_pars
-gaus_skew_pars = c("b0_par","b1_par","c_par","d_par","alpha_par")
+gaus_skew_pars = names(list_of_draws)[grepl(pattern = "par", x = names(list_of_draws))]
+# gaus_skew_pars = c("b0_par","b1_par","c_par","d_par","alpha_par")
 # gaus_skew_pars = c("level","scale","preference","choosiness","asymmetry")
 
 (skew_params = round(summary(gaus_skew, pars = gaus_skew_pars, probs=c(0.025, 0.975))$summary,2))
@@ -161,12 +162,8 @@ colnames(opt_val) = colnames(skew_params)
 opt_val['2.5%'] = quantile(samp, c(0.025, 0.975))[1]
 opt_val['97.5%'] = quantile(samp, c(0.025, 0.975))[2]
 
-
-
 opt_val[2:6] = round(opt_val[2:6], 2)
 (skew_params = rbind(skew_params, opt_val))
-
-
 
 write.table(skew_params, "tables/gaus_skew/SKEW/gaus_skew_params.csv", row.names = FALSE,
             col.names = TRUE,sep = ";")
