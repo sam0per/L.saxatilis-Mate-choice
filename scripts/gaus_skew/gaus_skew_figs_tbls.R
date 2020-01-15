@@ -21,8 +21,8 @@ skew_pars = read.csv("tables/gaus_skew/SKEW/gaus_skew_params.csv", sep = ";")
 pmat = function(b0, b1, c, d, alpha, dat) {
   b0 + b1 * exp(-0.5 * ((dat - c) / d)^2) * (1 + erf(alpha * (dat - c) / (1.414214 * d)))
 }
-range(pmat(b0 = 0.01, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
-           alpha = skew_pars["alpha","mean"], dat = CZ_data$size_ratio))
+range(pmat(b0 = 0.01, b1 = skew_pars["b1_par","mean"], c = skew_pars["c_par","mean"],d = skew_pars["d_par","mean"],
+           alpha = skew_pars["alpha_par","mean"], dat = CZ_data$size_ratio))
 # max(pmat(b0 = 0, b1 = 0.36, c = 0.23, d = 0.74, alpha = 1.61, dat = CZ_data$size_ratio))
 pmat(b0 = 0.01, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
      alpha = skew_pars["alpha","mean"], dat = -0.3)
@@ -80,17 +80,19 @@ d = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
         strip.text = element_text(face="bold", size=13),
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
 
-pmat_pa = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = -0.4, dat = CZ_data$size_ratio),
+pmat_pa = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0.2, d = 0.5, alpha = -1, dat = CZ_data$size_ratio),
                  pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0.4, dat = CZ_data$size_ratio),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = -0.2, d = 0.5, alpha = 1, dat = CZ_data$size_ratio),
                  size_ratio = CZ_data$size_ratio, par = "alpha")
 pmat_df = rbind(pmat_pb, pmat_pc, pmat_pd, pmat_pa)
-table(pmat_df$par)
-str(pmat_df)
+# table(pmat_df$par)
+# str(pmat_df)
 pmat_df$par = factor(pmat_df$par, levels = c("b[1]","c","d","alpha"))
 # pdf("manuscript/figures/FIG1_pars_eff.pdf", width = 25, height = 22)
 # loadfonts(device="postscript")
-bitmap("manuscript/figures/FIG1_pars_eff.tiff",
+# bitmap("manuscript/figures/FIG1_pars_eff.tiff",
+#        height = 4, width = 5, units = 'in', res=600)
+bitmap("manuscript/figures/FIG1_pars_eff_v2.tiff",
        height = 4, width = 5, units = 'in', res=600)
 ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
@@ -213,6 +215,22 @@ lapply(seq_along(islands), function(s) {
   ggsave(filename = paste0("figures/", pref_out, islands[s], "_cline_am_ss.tiff"),
          plot = CZs_cline_am_ss_plot[[s]], device = "tiff", width = 4, height = 5, units = "in", dpi = 600)
 })
+################################
+################################
+######### Table S1, S2 #########
+################################
+install.packages("MuMIn")
+library(MuMIn)
+CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
+top_glm = read.csv("tables/model_search/top_glm_2way_6predictors.csv")
+CZ_data$size_ratio3 = CZ_data$size_ratio^3
+call_top_glm = lapply(1:13, function(x) {
+  glm(formula = as.character(top_glm$frml)[x], family = binomial(link = "logit"), data = CZ_data)
+})
+ave_top_glm = summary(model.avg(call_top_glm))
+str(ave_top_glm)
+write.csv(x = ave_top_glm[["coefmat.full"]], file = "tables/model_search/full_ave_top_glm_2way_6predictors.csv")
+write.csv(x = ave_top_glm[["coefmat.subset"]], file = "tables/model_search/subset_ave_top_glm_2way_6predictors.csv")
 ##############################
 ##############################
 ######### S2 Fig S1a #########
