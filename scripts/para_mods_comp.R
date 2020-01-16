@@ -48,6 +48,7 @@ focus = readRDS(opt$focus)
 # focus = readRDS("models/gaus_skew/BCDG/gaus_skew_hier_BCDG.rds")
 cat("Reading model", opt$modelone, "\n")
 mod1 = readRDS(opt$modelone)
+# mod1 = readRDS("models/gaus_skew/SKEW/gaus_skew.rds")
 # mod2 = readRDS("models/gaus_skew/gaus_skew_hier_BCDG_shore.rds")
 # cat("Reading model", opt$modeltwo, "\n")
 # mod2 = readRDS(opt$modeltwo)
@@ -83,7 +84,7 @@ loo_ls = parallel::mclapply(seq_along(mod_ls), function(m) {loo(loglik_ls[[m]], 
 lapply(seq_along(mod_ls), function(m) {
   cat("LOO results for model", basename(mod_str[m]), "\n")
   print(loo_ls[[m]])
-  out_loo_ls = paste0(opt$out, "loo_", out_comp_str[[m]], ".csv")
+  out_loo_ls = paste0("tables/mods_comp/", "loo_", out_comp_str[[m]], ".csv")
   cat("Writing output", out_loo_ls, "...\n")
   write.table(round(loo_ls[[m]]$estimates, 2), out_loo_ls, sep = ",", row.names = TRUE, col.names = TRUE)
 })
@@ -92,7 +93,8 @@ lapply(seq_along(mod_ls), function(m) {
 # plot(loo_2, label_points = TRUE)
 
 cat("Comparing focus model", opt$focus, "against the rest ...\n")
-comp_ls = parallel::mclapply(2:length(mod_ls), function(m) {compare(loo_ls[[1]], loo_ls[[m]])}, mc.cores = length(mod_ls)-1)
+# comp_ls = parallel::mclapply(2:length(mod_ls), function(m) {compare(loo_ls[[1]], loo_ls[[m]])}, mc.cores = length(mod_ls)-1)
+comp_ls = parallel::mclapply(2:length(mod_ls), function(m) {loo_compare(loo_ls[[1]], loo_ls[[m]])}, mc.cores = length(mod_ls)-1)
 # print(comp_ls)
 lapply(seq_along(comp_ls), function(c) {
   cat("Comparing", out_comp_str[[1]], "vs", out_comp_str[[c+1]], "...\n")
