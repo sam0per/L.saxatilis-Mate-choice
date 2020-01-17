@@ -16,6 +16,10 @@ CZ_data = read.csv("data/CZ_all_mating_clean.csv", sep = ";")
 ############################
 ######### Figure 1 #########
 ############################
+# x <- seq(0, 1, length=1000)
+# y <- dnorm(x, mean=0.5, sd=0.1)
+# plot(x, dbeta(x, 15, 20), type="l")
+# lines(x, y, lwd=1)
 skew_pars = read.csv("tables/gaus_skew/SKEW/gaus_skew_params.csv", sep = ";")
 (skew_pars = column_to_rownames(skew_pars, var = "parameter"))
 pmat = function(b0, b1, c, d, alpha, dat) {
@@ -331,6 +335,7 @@ head(CZ_matrix)
 gmod = readRDS(paste0("models/", pref_out, basename(dirname(pref_out)),".rds"))
 gmod@model_pars
 hyp_nm = c("b", "c", "d", "alpha")
+# h=1
 gaus_skew = lapply(seq_along(hyp_nm), function(h) {
   coeff_nm = gmod@model_pars[grepl(pattern = paste0("^", hyp_nm[h]), x = gmod@model_pars)][-3]
   stan_val = summary(gmod, pars = coeff_nm)$summary
@@ -352,16 +357,40 @@ gaus_skew = lapply(seq_along(hyp_nm), function(h) {
 isl = 4
 hypp = c("BCDG_Bhyp", "BCDG_Chyp", "BCDG_Dhyp", "BCDG_ALPHAhyp")
 gaus_skew[[isl]]
-gaus_skew[[isl]]$fig = "c-hyperparameter\nIsland and ecotype effect"
-alpha_pars = gaus_skew[[4]]$parameter
-gaus_skew[[4]]$parameter = gaus_skew[[2]]$parameter
-# if (isl == 1) {
-#   gaus_skew[[isl]]$fig = "b[1]-hyperparameter\nIsland and test sex effect"
-# } else if (isl == 2) {
-#   gaus_skew[[isl]]$fig = "c-hyperparameter\nIsland and ecotype effect"
-# } else {
-#   gaus_skew[[isl]]$fig = paste0(hyp_nm[isl], "-hyperparameter\nno additional effect")
-# }
+eff_var = list(b1 = c("b_intercept", "b_shoreCZB", "b_shoreCZC", "b_test_sexmale"),
+               c = c("c_intercept", "c_shoreCZB", "c_shoreCZC", "c_ref_ecotypewave"),
+               d = c("d_intercept"),
+               alpha = c("alpha_intercept"))
+# gaus_skew[[isl]]$fig = "c-hyperparameter\nIsland and ecotype effect"
+# alpha_pars = gaus_skew[[4]]$parameter
+# gaus_skew[[4]]$parameter = gaus_skew[[2]]$parameter
+rownames(gaus_skew[[isl]]) = as.character(gaus_skew[[isl]][, 1])
+gaus_skew[[isl]][, 1] = NULL
+if (isl == 1) {
+  gaus_skew[[isl]]$fig = "Full hierarchical - hyperparameter b[1]\nIsland and sex effects"
+  gaus_skew[[isl]]$eff = 0
+  gaus_skew[[isl]][grepl(pattern = "b_intercept|b_shoreCZB|b_shoreCZC|b_test_sexmale$",
+                         x = rownames(gaus_skew[[isl]])), "eff"] = 1
+} else if (isl == 2) {
+  gaus_skew[[isl]]$fig = "Full hierarchical - hyperparameter c\nIsland and ecotype effects"
+  gaus_skew[[isl]]$eff = 0
+  gaus_skew[[isl]][grepl(pattern = "c_intercept|c_shoreCZB|c_shoreCZC|c_ref_ecotypewave",
+                         x = rownames(gaus_skew[[isl]])), "eff"] = 1
+} else {
+  gaus_skew[[isl]]$fig = paste0("Full hierarchical - hyperparameter ", hyp_nm[isl], "\nNo additional effect")
+  gaus_skew[[isl]]$eff = 0
+  gaus_skew[[isl]][grepl(pattern = "d_intercept|alpha_intercept",
+                         x = rownames(gaus_skew[[isl]])), "eff"] = 1
+}
+gaus_skew[[isl]]
+gaus_skew[[isl]]$parameter = c(paste0(hyp_nm[isl],"0"), paste0(hyp_nm[isl],"1"), paste0(hyp_nm[isl],"2"),
+                               paste0(hyp_nm[isl],"3"), paste0(hyp_nm[isl],"4"), paste0(hyp_nm[isl],"6"),
+                               paste0(hyp_nm[isl],"5T"), paste0(hyp_nm[isl],"6:",hyp_nm[isl],"5T"))
+gaus_skew[[isl]]$parameter = factor(gaus_skew[[isl]]$parameter)
+gaus_skew[[isl]]$parameter = factor(gaus_skew[[isl]]$parameter, levels = rev(levels(gaus_skew[[isl]]$parameter)))
+# gaus_skew[[isl]][8, "eff"] = 0
+# gaus_skew[[isl]]$parameter = rownames(gaus_skew[[isl]])
+gaus_skew[[isl]] = remove_rownames(gaus_skew[[isl]])
 tiff(filename = paste0("manuscript/figures/S1_FIG1b_",hypp[isl], ".tiff"), width = 2, height = 2, units = "in",
      res = 600)
 # pdf(file = "manuscript/figures/S2_FIG1a_Call.pdf", width = 4, height = 4)
@@ -369,11 +398,11 @@ ggplot(data = gaus_skew[[isl]]) +
   facet_wrap(~fig) +
   # geom_segment(aes(x=-Inf, xend=Inf, y=10.5, yend=10.5), linetype = "dashed", size = 0.3, col = "grey80") +
   geom_segment(aes(x=0, xend=0, y=-Inf, yend=7.5), linetype = "dashed", size = 0.3, col = "grey80") +
-  geom_errorbarh(aes(xmax = `2.5%`, xmin = `97.5%`, y = parameter, height = 0, col = "95% CI"), size = 0.4) +
-  geom_errorbarh(aes(xmax = `25%`, xmin = `75%`, y = parameter, height = 0, col = "50% CI"), size = 0.5) +
-  geom_point(aes(x = mean, y = parameter, col = "odot"), size = 0.2) +
+  geom_errorbarh(aes(xmax = `2.5%`, xmin = `97.5%`, y = parameter, height = 0), size = 0.4, col="grey60") +
+  geom_errorbarh(aes(xmax = `25%`, xmin = `75%`, y = parameter, height = 0), size = 0.5, col="grey40") +
+  geom_point(aes(x = mean, y = parameter, col = factor(eff)), size = 0.2) +
   # geom_point(aes(x = mean, y = parameter, col = "idot"), size = 1.8) +
-  scale_colour_manual(values = c("grey40", "grey60", "black")) +
+  scale_colour_manual(values = c("black", "red")) +
   # scale_colour_brewer(type = "qual", palette = 8, direction = 1) +
   # scale_color_viridis_d(begin = 0, end = 1, option = "A", direction = -1) +
   # scale_y_continuous(breaks = seq(1,11,1)) +

@@ -102,6 +102,12 @@ lapply(seq_along(comp_ls), function(c) {
   write.csv(tibble(x=c("elpd_diff","SE"), comp_ls[[c]]),
             paste0(opt$out, "comp_", out_comp_str[[1]], "_", out_comp_str[[c+1]], ".csv"), row.names=FALSE)
 })
+# lapply(seq_along(comp_ls), function(c) {
+#   cat("Comparing", out_comp_str[[1]], "vs", out_comp_str[[c+1]], "...\n")
+#   print(comp_ls[[c]], simplify = FALSE)
+#   write.csv(tibble(x=c("elpd_diff","SE"), comp_ls[[c]]),
+#             paste0("tables/mods_comp/comp_", out_comp_str[[1]], "_", out_comp_str[[c+1]], ".csv"), row.names=FALSE)
+# })
 
 # cat("The following comparisons have been completed:\n",
 #     out_comp_str[[1]], "vs", out_comp_str[[2]], "\n",
