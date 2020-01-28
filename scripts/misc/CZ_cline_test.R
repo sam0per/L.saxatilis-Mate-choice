@@ -82,3 +82,27 @@ for (p in levels(CZ_all$shore)) {
 (CZ_cline_se = sapply(mle.cline.2c3s, function(x) round(sqrt(diag(vcov(x))), 2)))
 sapply(mle.cline.2c3s, function(x) summary(x))
 sapply(mle.cline.2c3s, function(x) AIC(x))
+
+##############################################
+#### variance of size at island positions ####
+##############################################
+lapply(seq_along(islands), function(pl) {
+  write.csv(x = CZs_phen_cline[[pl]], file = paste0("tables/clines/", islands[pl], "_phen_cline.csv"), row.names = FALSE)
+})
+
+islands = as.character(unique(CZ_data$shore))
+clinedt = lapply(seq_along(islands), function(x) {
+  czdt = list.files(path = "tables/clines/", pattern = islands[x], full.names = TRUE)
+  read.csv(czdt)
+})
+isl = 1
+summary(clinedt[[isl]])
+clinedt[[isl]]$position = round(clinedt[[isl]]$position)
+(isl_c = round(c(cline_pars[[isl]]['cl', 'Estimate'], cline_pars[[isl]]['cr', 'Estimate'])))
+(pos_brks = c(isl_c[1]/2, isl_c[1], (isl_c[1]+isl_c[2])/2, isl_c[2]))
+# clinedt[[isl]]$pos_bin = cut(clinedt[[isl]]$position, breaks = pos_brks, include.lowest = TRUE)
+cline_ci = aggregate(clinedt[[isl]][, c(-3,-6)], by = list(sex=clinedt[[isl]]$sex, pos=clinedt[[isl]]$position), FUN = CI)
+head(cline_ci)
+lapply(seq_along(pos_brks), function(x) {
+  cline_ci[cline_ci$pos==pos_brks[x], ]
+})

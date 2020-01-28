@@ -28,8 +28,8 @@ pmat = function(b0, b1, c, d, alpha, dat) {
 range(pmat(b0 = 0.01, b1 = skew_pars["b1_par","mean"], c = skew_pars["c_par","mean"],d = skew_pars["d_par","mean"],
            alpha = skew_pars["alpha_par","mean"], dat = CZ_data$size_ratio))
 # max(pmat(b0 = 0, b1 = 0.36, c = 0.23, d = 0.74, alpha = 1.61, dat = CZ_data$size_ratio))
-pmat(b0 = 0.01, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
-     alpha = skew_pars["alpha","mean"], dat = -0.3)
+pmat(b0 = 0.01, b1 = skew_pars["b1_par","mean"], c = skew_pars["c_par","mean"],d = skew_pars["d_par","mean"],
+     alpha = skew_pars["alpha_par","mean"], dat = log(12.5)-log(5.2))
 CImat = read.csv("tables/gaus_skew/SKEW/gaus_skew_mat.csv", sep = ";")
 max(CImat$stan_yhat_lci)
 max(CImat$stan_yhat_uci)
@@ -42,10 +42,10 @@ max(CImat$stan_yhat)
 #                  ppp = pmat(b0 = 0.25, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
 #                             alpha = skew_pars["alpha","mean"], dat = CZ_data$size_ratio),
 #                  size_ratio = CZ_data$size_ratio, par = "b0")
-pmat_pb = tibble(p = pmat(b0 = 0.01, b1 = 0.4, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 ppp = pmat(b0 = 0.01, b1 = 0.6, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 size_ratio = CZ_data$size_ratio, par = "b[1]")
+pmat_pb = tibble(p = pmat(b0 = 0.01, b1 = 0.4, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.6, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 size_ratio = seq(-2, to = 2, length.out = 1001), par = "b[1]")
 b_1 = ggplot(data = pmat_pb, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
   geom_line(col='black') +
@@ -55,11 +55,12 @@ b_1 = ggplot(data = pmat_pb, aes(x = size_ratio, y = pp)) +
   theme(axis.title = element_text(face = "bold", size = 15),
         strip.text = element_text(face="bold", size=13),
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
+b_1
 
-pmat_pc = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = -0.2, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0.2, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 size_ratio = CZ_data$size_ratio, par = "c")
+pmat_pc = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = -0.2, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0.2, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 size_ratio = seq(-2, to = 2, length.out = 1001), par = "c")
 c = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
   geom_line(col='black') +
@@ -69,11 +70,12 @@ c = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   theme(axis.title = element_text(face = "bold", size = 15),
         strip.text = element_text(face="bold", size=13),
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
+c
 
-pmat_pd = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.4, alpha = 0, dat = CZ_data$size_ratio),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.6, alpha = 0, dat = CZ_data$size_ratio),
-                 size_ratio = CZ_data$size_ratio, par = "d")
+pmat_pd = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.4, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.6, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 size_ratio = seq(-2, to = 2, length.out = 1001), par = "d")
 d = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
   geom_line(col='black') +
@@ -84,10 +86,10 @@ d = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
         strip.text = element_text(face="bold", size=13),
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
 
-pmat_pa = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0.2, d = 0.5, alpha = -1, dat = CZ_data$size_ratio),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = CZ_data$size_ratio),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = -0.2, d = 0.5, alpha = 1, dat = CZ_data$size_ratio),
-                 size_ratio = CZ_data$size_ratio, par = "alpha")
+pmat_pa = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = -1, dat = seq(-2, to = 2, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 1, dat = seq(-2, to = 2, length.out = 1001)),
+                 size_ratio = seq(-2, to = 2, length.out = 1001), par = "alpha")
 pmat_df = rbind(pmat_pb, pmat_pc, pmat_pd, pmat_pa)
 # table(pmat_df$par)
 # str(pmat_df)
@@ -102,7 +104,7 @@ ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
   geom_vline(xintercept = 0, linetype="dashed") +
   geom_line(col='black', size=1.1) +
-  geom_line(aes(x = size_ratio, y = p), col='orange', size=1.1) +
+  geom_line(aes(x = size_ratio, y = p), col='#1a9641', size=1.1) +
   geom_line(aes(x = size_ratio, y = ppp), col='orange', size=1.1) +
   labs(x="ln female size - ln male size", y="probability of mating") +
   theme(axis.title = element_text(size = 12),

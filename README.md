@@ -35,6 +35,8 @@ There is strong evidence for the presence of assortative mating by size in L. sa
 [@saur1990]. Male mounting position is a reliable proxy for a copulation attempt in L. saxatilis [@hollander2005]. In addition, a positive correlation between mounting duration and the probability that the female received sperm has been observed in other littorinid species [@hollander2018].  
 [@lande1981; @gavrilets2004]  
 [@glaisher1871]  
-[@carpenter2017; @standevteam2018; @rolan2015; @bolker2017; @derryberry2014; @vehtari2018; @vehtari2015; @vehtari2017]
+[@carpenter2017; @standevteam2018; @rolan2015; @bolkerandteam2017; @derryberry2014]  
+[@panova2010; @johannesson2016; @houle1992]  
+[@janicke2019; @bartonandbengtsson1986]
 
 # References
