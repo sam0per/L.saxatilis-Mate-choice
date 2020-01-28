@@ -42,9 +42,9 @@ max(CImat$stan_yhat)
 #                  ppp = pmat(b0 = 0.25, b1 = skew_pars["b","mean"], c = skew_pars["c","mean"],d = skew_pars["d","mean"],
 #                             alpha = skew_pars["alpha","mean"], dat = CZ_data$size_ratio),
 #                  size_ratio = CZ_data$size_ratio, par = "b0")
-pmat_pb = tibble(p = pmat(b0 = 0.01, b1 = 0.4, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 ppp = pmat(b0 = 0.01, b1 = 0.6, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+pmat_pb = tibble(p = pmat(b0 = 0.01, b1 = 0.3, c = 0, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.7, c = 0, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
                  size_ratio = seq(-2, to = 2, length.out = 1001), par = "b[1]")
 b_1 = ggplot(data = pmat_pb, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
@@ -57,9 +57,9 @@ b_1 = ggplot(data = pmat_pb, aes(x = size_ratio, y = pp)) +
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
 b_1
 
-pmat_pc = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = -0.2, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0.2, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+pmat_pc = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = -4, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 4, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
                  size_ratio = seq(-2, to = 2, length.out = 1001), par = "c")
 c = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
@@ -72,9 +72,9 @@ c = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
 c
 
-pmat_pd = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.4, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.6, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
+pmat_pd = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 3, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 7, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
                  size_ratio = seq(-2, to = 2, length.out = 1001), par = "d")
 d = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
   facet_wrap(~par, labeller = label_parsed) +
@@ -86,9 +86,9 @@ d = ggplot(data = pmat_df, aes(x = size_ratio, y = pp)) +
         strip.text = element_text(face="bold", size=13),
         strip.background = element_rect(fill="lightblue", colour="black",size=1))
 
-pmat_pa = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = -1, dat = seq(-2, to = 2, length.out = 1001)),
-                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 0, dat = seq(-2, to = 2, length.out = 1001)),
-                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 0.5, alpha = 1, dat = seq(-2, to = 2, length.out = 1001)),
+pmat_pa = tibble(p = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 5, alpha = -4, dat = seq(-15, to = 15, length.out = 1001)),
+                 pp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 5, alpha = 0, dat = seq(-15, to = 15, length.out = 1001)),
+                 ppp = pmat(b0 = 0.01, b1 = 0.5, c = 0, d = 5, alpha = 4, dat = seq(-15, to = 15, length.out = 1001)),
                  size_ratio = seq(-2, to = 2, length.out = 1001), par = "alpha")
 pmat_df = rbind(pmat_pb, pmat_pc, pmat_pd, pmat_pa)
 # table(pmat_df$par)
