@@ -1,7 +1,7 @@
 rm(list = ls())
 
-.packages = c("ggplot2", "dplyr", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
-              "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel", "optparse", "pracma", "ggpubr")
+.packages = c("ggplot2", "rstan", "tibble", "boot", "bayesplot", "Rmisc", "pander",
+              "purrr", "reshape2", "gridExtra", "grid", "arm", "parallel", "optparse", "pracma", "ggpubr", "dplyr")
 
 # Install CRAN packages (if not already installed)
 .inst <- .packages %in% installed.packages()
@@ -43,17 +43,17 @@ dat = list(N = nrow(CZ_data), y = CZ_data$mountYNcontact, ratio = CZ_data$size_r
 # str(dat)
 # dat$posterior_predictive = 1
 # fit.prior.pred = stan(file = "scripts/CZ_mating_gaus_prior_size.stan", data = dat)
+writeLines(readLines("L.saxatilis-Mate-choice/scripts/gaus_skew.stan"))
 
-gaus_skew = rstan::stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew/gaus_skew.stan",
-                        data = dat, iter = 8000, warmup = 2000,
-                        chains=4, refresh=8000,
-                        control = list(adapt_delta = 0.90, max_treedepth = 15))
+gaus_skew <- stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew.stan",
+                  data = dat, iter = 8000, warmup = 2000, chains = 4, refresh=8000,
+                  control = list(adapt_delta = 0.90, max_treedepth = 15))
 saveRDS(gaus_skew, "models/gaus_skew/SKEW/gaus_skew.rds")
 
 #############################
 # plot post distr gaus skew #
 #############################
-# gaus_skew = readRDS("models/gaus_skew/gaus_skew.rds")
+# gaus_skew = readRDS("models/gaus_skew/SKEW/gaus_skew.rds")
 # gaus_skew@model_pars
 # gaus_size_pars = c("b","c","d","alpha")
 gaus_size_pars = c("b0","b1","c","d","alpha")

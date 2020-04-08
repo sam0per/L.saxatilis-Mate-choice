@@ -13,18 +13,13 @@ parameters {
 }
 
 transformed parameters {
-  //vector[N] err_val;
   vector[N] y_hat;
   for (i in 1:N) {
     y_hat[i] = b0_par + b1_par * exp(-0.5 * ((ratio[i] - c_par) / d_par)^2) * (1 + erf(alpha_par * (ratio[i] - c_par) / (1.414214 * d_par)));
   }
-  //y_prob = y_hat .* (1 + erf(err_val));
 }
 
 model {
-  //level ~ normal(0, 10);
-  //preference ~ normal(0, 10);
-  //asymmetry ~ normal(0, 10);
   y ~ bernoulli_logit(logit(y_hat));
 }
 
@@ -32,9 +27,9 @@ generated quantities {
   vector[N] log_lik;
   vector[N] y_rep;
   for (n in 1:N) {
-    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit(b0_par + b1_par * exp(-0.5 * ((ratio[n] - c_par) / d_par)^2) * (1 + erf(alpha_par * (ratio[n] - c_par) / (1.414214 * d_par)))));
+    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit(y_hat));
   }
   for (n in 1:N) {
-    y_rep[n] = bernoulli_logit_rng(logit(b0_par + b1_par * exp(-0.5 * ((ratio[n] - c_par) / d_par)^2) * (1 + erf(alpha_par * (ratio[n] - c_par) / (1.414214 * d_par)))));
+    y_rep[n] = bernoulli_logit_rng(logit(y_hat));
   }
 }
