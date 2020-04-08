@@ -27,9 +27,7 @@ generated quantities {
   vector[N] log_lik;
   vector[N] y_rep;
   for (n in 1:N) {
-    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit(y_hat));
-  }
-  for (n in 1:N) {
-    y_rep[n] = bernoulli_logit_rng(logit(y_hat));
+    log_lik[n] = bernoulli_logit_lpmf(y[n] | logit(y_hat[n]));
+    y_rep[n] = bernoulli_logit_rng(logit(y_hat[n]));
   }
 }
