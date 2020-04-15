@@ -48,8 +48,9 @@ writeLines(readLines("L.saxatilis-Mate-choice/scripts/gaus_skew.stan"))
 gaus_skew <- stan(file = "L.saxatilis-Mate-choice/scripts/gaus_skew.stan",
                   data = dat, iter = 8000, warmup = 2000, chains = 4, refresh=8000,
                   control = list(adapt_delta = 0.90, max_treedepth = 15))
+dir.create(path = "models/gaus_skew/SKEW")
 saveRDS(gaus_skew, "models/gaus_skew/SKEW/gaus_skew.rds")
-
+print(gaus_skew, pars=c("b0_par", "b1_par", "c_par", "d_par", "alpha_par"), digits=3)
 #############################
 # plot post distr gaus skew #
 #############################
@@ -124,6 +125,9 @@ rownames(skew_params) = c("b0","b1","c","d","alpha")
 # class(gaus_skew)
 
 y_hat = summary(gaus_skew, pars = c("y_hat"))$summary[,'mean']
+round(mean(y_hat), 2)
+CZ_data$size_ratio[as.vector(which(round(y_hat, 2)==round(mean(y_hat), 2)))]
+range(y_hat)
 # CZ_erf = summary(gaus_skew, pars = c("err_val"))$summary[,'mean']
 # y_prob = y_hat * (1 + erf(CZ_erf))
 # plot(CZ_data$size_ratio, y_hat)
