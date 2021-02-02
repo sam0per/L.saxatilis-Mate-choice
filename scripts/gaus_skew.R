@@ -207,7 +207,7 @@ CZ_data_bin =
                    uci_mount = CI(mountYNcontact)['upper'],
                    lci_mount = CI(mountYNcontact)['lower'],
                    mean_ratio = mean(size_ratio),
-                   #y_rep = mean(y_rep),
+                   # y_rep = mean(y_rep),
                    preds_mount = mean(stan_mountYN)) %>%
   mutate(lci_mount = replace(lci_mount, which(lci_mount<0), 0))
 # summary(CZ_data_bin)
